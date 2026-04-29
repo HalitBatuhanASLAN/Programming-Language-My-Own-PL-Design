@@ -1,0 +1,1457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CSE 341 — Project Guide</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,600;0,700;1,300&display=swap');
+
+  :root {
+    --bg: #0a0e1a;
+    --bg2: #111827;
+    --bg3: #1a2235;
+    --accent: #00d4ff;
+    --accent2: #ff6b35;
+    --accent3: #7c3aed;
+    --accent4: #10b981;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+    --text: #e2e8f0;
+    --text-muted: #94a3b8;
+    --border: rgba(0,212,255,0.15);
+    --card: rgba(17,24,39,0.8);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'IBM Plex Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── HERO ── */
+  .hero {
+    padding: 80px 0 60px;
+    text-align: center;
+    position: relative;
+  }
+  .hero-badge {
+    display: inline-block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    padding: 6px 16px;
+    border-radius: 2px;
+    margin-bottom: 28px;
+    background: rgba(0,212,255,0.05);
+  }
+  .hero h1 {
+    font-size: clamp(2rem, 5vw, 3.8rem);
+    font-weight: 700;
+    line-height: 1.1;
+    margin-bottom: 16px;
+    background: linear-gradient(135deg, #fff 0%, var(--accent) 60%, #7c3aed 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero-sub {
+    font-size: 1.1rem;
+    color: var(--text-muted);
+    max-width: 600px;
+    margin: 0 auto 40px;
+    font-weight: 300;
+  }
+  .hero-meta {
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+  .hero-meta-item {
+    text-align: center;
+  }
+  .hero-meta-item .label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .hero-meta-item .value {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--accent);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  /* ── SECTION ── */
+  section {
+    padding: 64px 0;
+    border-top: 1px solid var(--border);
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 40px;
+  }
+  .section-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    background: rgba(0,212,255,0.08);
+    border: 1px solid rgba(0,212,255,0.3);
+    padding: 4px 10px;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+  .section-title {
+    font-size: 1.7rem;
+    font-weight: 700;
+    color: #fff;
+  }
+  .section-title span {
+    color: var(--accent);
+  }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent3));
+  }
+  .card-accent2::before { background: linear-gradient(90deg, var(--accent2), var(--warn)); }
+  .card-accent3::before { background: linear-gradient(90deg, var(--accent4), var(--accent)); }
+  .card-danger::before { background: linear-gradient(90deg, var(--danger), var(--accent2)); }
+  .card-warn::before { background: linear-gradient(90deg, var(--warn), var(--accent2)); }
+
+  .card h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: #fff;
+  }
+  .card p, .card li {
+    font-size: 0.92rem;
+    color: var(--text-muted);
+    line-height: 1.7;
+  }
+  .card ul { padding-left: 20px; }
+  .card li { margin-bottom: 6px; }
+
+  /* ── GRID LAYOUTS ── */
+  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+
+  /* ── TIMELINE ── */
+  .timeline {
+    position: relative;
+    padding-left: 40px;
+  }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 12px; top: 0; bottom: 0;
+    width: 2px;
+    background: linear-gradient(to bottom, var(--accent), var(--accent3), transparent);
+  }
+  .tl-item {
+    position: relative;
+    margin-bottom: 32px;
+  }
+  .tl-item::before {
+    content: '';
+    position: absolute;
+    left: -34px;
+    top: 6px;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--bg);
+    box-shadow: 0 0 12px var(--accent);
+  }
+  .tl-item.exam::before { background: var(--accent2); box-shadow: 0 0 12px var(--accent2); }
+  .tl-item.deadline::before { background: var(--warn); box-shadow: 0 0 12px var(--warn); }
+  .tl-date {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+  .tl-item.exam .tl-date { color: var(--accent2); }
+  .tl-item.deadline .tl-date { color: var(--warn); }
+  .tl-title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 4px;
+  }
+  .tl-desc {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+  }
+
+  /* ── DELIVERABLE TABLE ── */
+  .del-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+  }
+  .del-table th {
+    text-align: left;
+    padding: 12px 16px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: rgba(0,212,255,0.05);
+    border-bottom: 1px solid var(--border);
+  }
+  .del-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    color: var(--text-muted);
+    vertical-align: top;
+  }
+  .del-table tr:hover td { background: rgba(0,212,255,0.03); }
+  .del-code {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    background: rgba(0,212,255,0.08);
+    padding: 2px 8px;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  .p1-tag {
+    font-size: 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    padding: 2px 7px;
+    border-radius: 10px;
+    display: inline-block;
+    margin-left: 4px;
+  }
+  .p1 { background: rgba(0,212,255,0.1); color: var(--accent); border: 1px solid rgba(0,212,255,0.3); }
+  .p2 { background: rgba(124,58,237,0.1); color: #a78bfa; border: 1px solid rgba(124,58,237,0.3); }
+  .both { background: rgba(16,185,129,0.1); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
+
+  /* ── TAGS ── */
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    font-family: 'IBM Plex Mono', monospace;
+    padding: 3px 10px;
+    border-radius: 3px;
+    margin: 3px 2px;
+  }
+  .tag-green { background: rgba(16,185,129,0.12); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
+  .tag-red { background: rgba(239,68,68,0.12); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+  .tag-yellow { background: rgba(245,158,11,0.12); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
+  .tag-blue { background: rgba(0,212,255,0.1); color: var(--accent); border: 1px solid rgba(0,212,255,0.3); }
+  .tag-purple { background: rgba(124,58,237,0.1); color: #a78bfa; border: 1px solid rgba(124,58,237,0.3); }
+
+  /* ── ALERT BOXES ── */
+  .alert {
+    border-radius: 6px;
+    padding: 18px 22px;
+    margin: 20px 0;
+    border-left: 4px solid;
+    font-size: 0.92rem;
+  }
+  .alert-danger { background: rgba(239,68,68,0.08); border-color: var(--danger); color: #fca5a5; }
+  .alert-warn { background: rgba(245,158,11,0.08); border-color: var(--warn); color: #fde68a; }
+  .alert-info { background: rgba(0,212,255,0.06); border-color: var(--accent); color: #bae6fd; }
+  .alert-success { background: rgba(16,185,129,0.08); border-color: var(--accent4); color: #a7f3d0; }
+  .alert strong { color: #fff; }
+
+  /* ── RUBRIC ── */
+  .rubric-item {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .rubric-dim {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .rubric-dim-icon {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+  }
+  .rubric-grades {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+  .grade-box {
+    border-radius: 5px;
+    padding: 10px;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+  .grade-a { background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.2); }
+  .grade-b { background: rgba(0,212,255,0.06); border: 1px solid rgba(0,212,255,0.15); }
+  .grade-c { background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.15); }
+  .grade-d { background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.15); }
+  .grade-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    display: block;
+    margin-bottom: 4px;
+  }
+  .grade-a .grade-label { color: #34d399; }
+  .grade-b .grade-label { color: var(--accent); }
+  .grade-c .grade-label { color: #fbbf24; }
+  .grade-d .grade-label { color: #f87171; }
+
+  /* ── AI EXPERIMENT ── */
+  .experiment {
+    background: var(--bg3);
+    border: 1px solid rgba(124,58,237,0.3);
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 16px;
+    position: relative;
+  }
+  .experiment::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent3), var(--accent));
+  }
+  .exp-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: #a78bfa;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+  }
+  .exp-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 8px;
+  }
+  .exp-task {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+  }
+  .exp-report {
+    font-size: 0.85rem;
+    color: #a78bfa;
+    background: rgba(124,58,237,0.08);
+    padding: 10px 14px;
+    border-radius: 5px;
+    border: 1px solid rgba(124,58,237,0.2);
+  }
+
+  /* ── CHAPTER MAP ── */
+  .chapter-map {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 14px;
+  }
+  .chapter-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px;
+    transition: border-color 0.2s;
+  }
+  .chapter-card:hover { border-color: var(--accent); }
+  .ch-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+  .ch-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 8px;
+  }
+  .ch-parts {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+
+  /* ── CODE BLOCK ── */
+  .code-block {
+    background: #050810;
+    border: 1px solid rgba(0,212,255,0.1);
+    border-radius: 6px;
+    padding: 18px 20px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.82rem;
+    color: #a8d8ea;
+    overflow-x: auto;
+    line-height: 1.8;
+  }
+  .code-block .kw { color: #c792ea; }
+  .code-block .str { color: #c3e88d; }
+  .code-block .comment { color: #546e7a; }
+  .code-block .fn { color: #82aaff; }
+
+  /* ── CHECKLIST ── */
+  .checklist li {
+    list-style: none;
+    padding: 8px 0;
+    padding-left: 28px;
+    position: relative;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-size: 0.9rem;
+    color: var(--text);
+  }
+  .checklist li::before {
+    content: '□';
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    text-align: center;
+    padding: 48px 0;
+    border-top: 1px solid var(--border);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(10,14,26,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+  }
+  .nav-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .nav-inner::-webkit-scrollbar { display: none; }
+  nav a {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 12px;
+    font-family: 'IBM Plex Mono', monospace;
+    padding: 14px 16px;
+    white-space: nowrap;
+    transition: color 0.2s;
+    letter-spacing: 0.5px;
+  }
+  nav a:hover { color: var(--accent); }
+  nav a.active { color: var(--accent); border-bottom: 2px solid var(--accent); }
+
+  /* Big stat boxes */
+  .stat-box {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    text-align: center;
+  }
+  .stat-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .stat-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .highlight {
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .highlight-orange { color: var(--accent2); font-weight: 600; }
+  .highlight-green { color: var(--accent4); font-weight: 600; }
+  .highlight-purple { color: #a78bfa; font-weight: 600; }
+
+  h4 { color: #fff; font-size: 0.95rem; margin-bottom: 10px; font-weight: 600; }
+
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    margin: 32px 0;
+    opacity: 0.3;
+  }
+
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <a href="#overview" class="active">Overview</a>
+    <a href="#timeline">Timeline</a>
+    <a href="#deliverables">Deliverables</a>
+    <a href="#implementation">Implementation</a>
+    <a href="#chapters">Book Chapters</a>
+    <a href="#ai-journal">AI Journal</a>
+    <a href="#rubric">Rubric</a>
+    <a href="#rules">Rules</a>
+    <a href="#checklist">Checklist</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="container">
+  <div class="hero">
+    <div class="hero-badge">CSE 341 · Gebze Technical University · Spring 2026</div>
+    <h1>Design & Implement<br>Your Own Language</h1>
+    <p class="hero-sub">A complete guide to the Mini Programming Language project — covering everything from domain selection to the final written exam.</p>
+    <div class="hero-meta">
+      <div class="hero-meta-item">
+        <div class="label">Part 1 Due</div>
+        <div class="value">08 May 2026</div>
+      </div>
+      <div class="hero-meta-item">
+        <div class="label">Exam 1</div>
+        <div class="value">14 May 2026</div>
+      </div>
+      <div class="hero-meta-item">
+        <div class="label">Part 2 Due</div>
+        <div class="value">22 May 2026</div>
+      </div>
+      <div class="hero-meta-item">
+        <div class="label">Exam 2</div>
+        <div class="value">04 Jun 2026</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── SECTION 1: OVERVIEW ── -->
+<section id="overview">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-num">01</div>
+      <h2 class="section-title">Project <span>Overview</span></h2>
+    </div>
+
+    <div class="grid-4" style="margin-bottom:32px">
+      <div class="stat-box">
+        <div class="stat-num">2</div>
+        <div class="stat-label">Submission Parts</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">2</div>
+        <div class="stat-label">Written Exams</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">6</div>
+        <div class="stat-label">Deliverables</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">1–2</div>
+        <div class="stat-label">Team Size</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <h3>🎯 What Is This Project?</h3>
+        <p>You will design your own <strong style="color:#fff">Domain-Specific Language (DSL)</strong> and build a full interpreter for it. The project covers Chapters 1–7 of Sebesta's <em>Concepts of Programming Languages</em> (12th edition).</p>
+        <br>
+        <p>The project is split into two parts:</p>
+        <ul style="margin-top:10px">
+          <li><strong style="color:var(--accent)">Part 1:</strong> Language design + Lexer + Parser</li>
+          <li><strong style="color:#a78bfa">Part 2:</strong> Type checker + Interpreter + Full execution</li>
+        </ul>
+      </div>
+      <div class="card card-accent2">
+        <h3>⚠️ The AI-Resistant Mechanism</h3>
+        <p>After each submission, you take a <strong style="color:#fff">90-minute in-class written exam</strong> with questions <em>tailored specifically to your own submission.</em></p>
+        <br>
+        <p>Example question: <em style="color:var(--warn)">"In your D1 you said your language has static scoping — show on this code excerpt how the lookup of variable x resolves."</em></p>
+        <br>
+        <p>If you can't answer questions about your own work, your grade drops — regardless of how polished the submission looks.</p>
+      </div>
+    </div>
+
+    <div class="alert alert-info" style="margin-top:24px">
+      <strong>Core Goal:</strong> The primary deliverable is your <em>design decisions</em> and your ability to <em>defend them</em> using the vocabulary of Sebesta's textbook. No AI can complete this end-to-end because it requires <em>your understanding</em>.
+    </div>
+
+    <div class="divider"></div>
+
+    <h4>What Your Language Must Have (Minimum Requirements)</h4>
+    <div class="grid-3">
+      <div class="card card-accent3">
+        <h3>Type System</h3>
+        <ul>
+          <li>At least <strong style="color:#fff">3 primitive types</strong></li>
+          <li>At least <strong style="color:#fff">1 structured type</strong> (array, record, or user-defined)</li>
+        </ul>
+      </div>
+      <div class="card card-accent3">
+        <h3>Control Flow</h3>
+        <ul>
+          <li>At least <strong style="color:#fff">1 control structure</strong> beyond sequencing</li>
+          <li>Examples: if, while, for, pattern-match</li>
+        </ul>
+      </div>
+      <div class="card card-accent3">
+        <h3>Functions</h3>
+        <ul>
+          <li><strong style="color:#fff">User-defined functions or procedures</strong> with parameters</li>
+        </ul>
+      </div>
+      <div class="card card-accent3">
+        <h3>Domain-Specific Construct</h3>
+        <ul>
+          <li>At least <strong style="color:#fff">one DSL construct</strong> that justifies why this isn't a generic scripting language</li>
+        </ul>
+      </div>
+      <div class="card card-accent3">
+        <h3>Expression Language</h3>
+        <ul>
+          <li>Nontrivial operators raising questions about <strong style="color:#fff">precedence, associativity, mixed-mode arithmetic, coercion</strong></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <h4>Example Domain Ideas (from the Handout)</h4>
+    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:8px">
+      <span class="tag tag-blue">TurtleLang — turtle graphics</span>
+      <span class="tag tag-blue">ChessDSL — chess puzzles</span>
+      <span class="tag tag-blue">QueryLite — CSV queries</span>
+      <span class="tag tag-blue">MusicScript — melodies</span>
+      <span class="tag tag-blue">CircuitLang — digital circuits</span>
+      <span class="tag tag-blue">RecipeLang — cooking/ingredients</span>
+      <span class="tag tag-blue">PlotDSL — 2D data plots</span>
+      <span class="tag tag-purple">Your own original domain ✨</span>
+    </div>
+
+  </div>
+</section>
+
+<!-- ── SECTION 2: TIMELINE ── -->
+<section id="timeline">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-num">02</div>
+      <h2 class="section-title">Complete <span>Timeline</span></h2>
+    </div>
+
+    <div class="grid-2">
+      <div class="timeline">
+        <div class="tl-item deadline">
+          <div class="tl-date">MON 04 MAY 2026</div>
+          <div class="tl-title">⚡ Pair Declaration Deadline</div>
+          <div class="tl-desc">Submit the pair declaration form. Students who miss this are treated as solo. Each partner writes their own AI Usage Journal — it is never shared.</div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-date">FRI 08 MAY 2026, 23:59</div>
+          <div class="tl-title">📦 Part 1 Submission</div>
+          <div class="tl-desc">D1 (design spec, Ch.1–5 sections), D2 (lexer + parser), D3 (test report), D4 (AI journal ≥4 entries + E1), D5 (retrospective ½ page), D6 (pairs only).</div>
+        </div>
+        <div class="tl-item exam">
+          <div class="tl-date">THU 14 MAY 2026, 08:30 — 90 min</div>
+          <div class="tl-title">📝 Exam 1 (In-Class)</div>
+          <div class="tl-desc">Covers your Part 1 submission + Sebesta Ch. 1, 3, 4, 5. Questions tailored to your own design. Bring up to 3 sheets of handwritten A4 notes (one side each). No printed material.</div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-date">FRI 22 MAY 2026, 23:59</div>
+          <div class="tl-title">📦 Part 2 Submission</div>
+          <div class="tl-desc">Complete spec (Ch.1–7), full interpreter, updated test report (executed programs + type error), AI journal (≥6 more entries + E2, E3), full retrospective, D6 update.</div>
+        </div>
+        <div class="tl-item exam">
+          <div class="tl-date">THU 04 JUN 2026 — Class Hours (Makeup Week)</div>
+          <div class="tl-title">📝 Exam 2 (In-Class)</div>
+          <div class="tl-desc">Covers your full Part 2 submission + Sebesta Ch. 6, 7. May reference Part 1 material. Questions tailored to your own submission. Same format as Exam 1.</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card card-warn" style="margin-bottom:20px">
+          <h3>⏱ Late Policy</h3>
+          <p><strong style="color:#fff">−10% per calendar day late</strong>, up to 3 days. Zero credit after 3 days.</p>
+          <br>
+          <p>Applied <em>per part separately</em>. Extensions require documented medical/personal justification and must be requested <em>before</em> the relevant deadline.</p>
+        </div>
+
+        <div class="card" style="margin-bottom:20px">
+          <h3>📋 Exam Format</h3>
+          <ul>
+            <li>Written, on paper — same lined-and-bordered style as the midterm</li>
+            <li>Mix of short-answer, draw, annotate questions</li>
+            <li><strong style="color:#fff">What you may bring:</strong> 3 sheets of A4 handwritten notes, one side each. Your name + student ID at the top of each sheet.</li>
+            <li><strong style="color:var(--danger)">What you may NOT bring:</strong> Printed material, photocopied notes, laptops, phones, books</li>
+            <li>All notes are collected at the end of the exam</li>
+          </ul>
+        </div>
+
+        <div class="card card-accent3">
+          <h3>🔄 Part 2 = Revised Part 1</h3>
+          <p>Part 2 is a <strong style="color:#fff">re-submission of the entire project</strong>. You may freely revise everything from Part 1. The two parts are <strong style="color:#fff">weighted equally</strong> in the final grade.</p>
+          <br>
+          <p>Your Part 2 spec must be <em>consistent</em> with your Part 2 implementation. You can revise the spec — but not retroactively after submission.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── SECTION 3: DELIVERABLES ── -->
+<section id="deliverables">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-num">03</div>
+      <h2 class="section-title">All <span>Deliverables</span></h2>
+    </div>
+
+    <div style="overflow-x:auto">
+      <table class="del-table">
+        <thead>
+          <tr>
+            <th>Code</th>
+            <th>Name</th>
+            <th>Part 1 — Due 8 May</th>
+            <th>Part 2 — Due 22 May</th>
+            <th>Who submits</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="del-code">D1</span></td>
+            <td style="color:#fff;font-weight:600">Design Specification</td>
+            <td>Language overview, lexical structure, EBNF syntax, names/bindings/scope/lifetime (Ch.1–5). <span class="p1-tag p1">P1</span></td>
+            <td>Complete final version + type system, expressions, semantics for 2 constructs, full rationale (Ch.1–7). <span class="p1-tag p2">P2</span></td>
+            <td><span class="tag tag-blue">Both partners individually</span></td>
+          </tr>
+          <tr>
+            <td><span class="del-code">D2</span></td>
+            <td style="color:#fff;font-weight:600">Implementation (Source Code)</td>
+            <td>Working lexer + parser. Accepts valid programs → printable AST. Rejects malformed programs with error + line number. README with build/run instructions. <span class="p1-tag p1">P1</span></td>
+            <td>Adds type checker + interpreter. End-to-end execution of 3 example programs. Informative runtime errors. <span class="p1-tag p2">P2</span></td>
+            <td><span class="tag tag-green">One partner (pairs)</span></td>
+          </tr>
+          <tr>
+            <td><span class="del-code">D3</span></td>
+            <td style="color:#fff;font-weight:600">Example Programs & Test Report</td>
+            <td>3 non-trivial programs that parse successfully + 5 malformed programs showing error messages with line numbers. PDF, 2–3 pages. <span class="p1-tag p1">P1</span></td>
+            <td>Same 3 programs now executed with actual output + brief discussion. At least 1 type-error program. PDF, 3–5 pages. <span class="p1-tag p2">P2</span></td>
+            <td><span class="tag tag-green">One partner (pairs)</span></td>
+          </tr>
+          <tr>
+            <td><span class="del-code">D4</span></td>
+            <td style="color:#fff;font-weight:600">AI Usage Journal <em style="color:var(--warn)">(individual!)</em></td>
+            <td>Min. <strong style="color:#fff">4 substantive entries</strong>, dated up to 8 May. Must include Experiment E1. <span class="p1-tag p1">P1</span></td>
+            <td>Min. <strong style="color:#fff">6 additional entries</strong>, dated 9–22 May. Must include Experiments E2 and E3. <span class="p1-tag p2">P2</span></td>
+            <td><span class="tag tag-yellow">Each student individually</span></td>
+          </tr>
+          <tr>
+            <td><span class="del-code">D5</span></td>
+            <td style="color:#fff;font-weight:600">Retrospective & Self-Assessment</td>
+            <td>½ page: what is working, what is hard, what you plan to fix. <span class="p1-tag p1">P1</span></td>
+            <td>1 full page: retrospective (½) + honest self-assessment against rubric grading yourself A/B/C/D with justification (½). <span class="p1-tag p2">P2</span></td>
+            <td><span class="tag tag-yellow">Each student individually</span></td>
+          </tr>
+          <tr>
+            <td><span class="del-code">D6</span></td>
+            <td style="color:#fff;font-weight:600">Contribution Report <em style="color:var(--text-muted)">(pairs only)</em></td>
+            <td>For each D1 section and D2 component: who wrote it and who reviewed it. State workload is evenly split. ½ page. <span class="p1-tag p1">P1</span></td>
+            <td>Updated report covering full project. Each partner ≥40% of total work. <span class="p1-tag p2">P2</span></td>
+            <td><span class="tag tag-green">One partner (pairs)</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="alert alert-info" style="margin-top:24px">
+      <strong>File Naming Convention:</strong> Every file starts with your student number (solo) or both IDs joined by a hyphen (pairs), then an underscore, then the deliverable code.<br>
+      <code style="color:var(--accent);font-family:'IBM Plex Mono',monospace">20210045_D1_P1.pdf</code> &nbsp;/&nbsp; 
+      <code style="color:var(--accent);font-family:'IBM Plex Mono',monospace">20210045-20210078_D2_P2.zip</code><br>
+      For Part 2: replace <code style="color:#a78bfa;font-family:'IBM Plex Mono',monospace">_P1</code> with <code style="color:#a78bfa;font-family:'IBM Plex Mono',monospace">_P2</code>. Submit via <strong>Microsoft Teams → CSE 341 → Assignments tab</strong>. No email submissions.
+    </div>
+
+    <div class="divider"></div>
+
+    <h4>Design Specification (D1) — Section-by-Section Breakdown</h4>
+    <div class="grid-2" style="margin-top:16px">
+      <div>
+        <div class="card" style="margin-bottom:14px">
+          <h3>§4.1 Language Overview <span class="p1-tag p1">P1</span></h3>
+          <ul>
+            <li>Name, domain, sample program</li>
+            <li>Justify using Sebesta's <strong style="color:#fff">language evaluation criteria</strong> (Ch.1): readability, writability, reliability, cost</li>
+            <li>Which criteria does your DSL prioritize? Which does it knowingly sacrifice?</li>
+          </ul>
+        </div>
+        <div class="card" style="margin-bottom:14px">
+          <h3>§4.2 Lexical Structure <span class="p1-tag p1">P1</span></h3>
+          <ul>
+            <li>List all token categories: identifiers, literals, keywords, operators, separators</li>
+            <li>Give regex/pattern for each</li>
+          </ul>
+        </div>
+        <div class="card" style="margin-bottom:14px">
+          <h3>§4.3 Syntax <span class="p1-tag p1">P1</span></h3>
+          <ul>
+            <li>Complete grammar in <strong style="color:#fff">EBNF</strong> (Sebesta §3.1–3.2)</li>
+            <li>Must be unambiguous for the subset you implement</li>
+            <li>Annotate ambiguity resolutions: operator precedence, dangling else</li>
+          </ul>
+        </div>
+        <div class="card" style="margin-bottom:14px">
+          <h3>§4.4 Semantics <span class="p1-tag p2">P2</span></h3>
+          <ul>
+            <li>Operational or denotational semantics (Sebesta §3.5)</li>
+            <li>For at least <strong style="color:#fff">2 non-trivial constructs</strong> (e.g., while loop, DSL construct)</li>
+            <li>⛔ Axiomatic semantics is NOT accepted</li>
+          </ul>
+        </div>
+      </div>
+      <div>
+        <div class="card" style="margin-bottom:14px">
+          <h3>§4.5 Type System <span class="p1-tag p2">P2</span></h3>
+          <ul>
+            <li>Primitive types + value sets</li>
+            <li>Strongly typed? (§6.12) — justify</li>
+            <li>Implicit coercion? (§7.4) — state rules</li>
+            <li>Name vs. structural equivalence (§6.14) — why?</li>
+            <li>Structured type design decisions (§6.5–6.7)</li>
+          </ul>
+        </div>
+        <div class="card" style="margin-bottom:14px">
+          <h3>§4.6 Names, Binding, Scope, Lifetime <span class="p1-tag p1">P1</span></h3>
+          <ul>
+            <li>Legal identifier rules</li>
+            <li>Compile-time vs. run-time bindings</li>
+            <li><strong style="color:#fff">Static or dynamic scoping?</strong> Why? What breaks if you switch?</li>
+            <li>Lifetime of locals: stack-dynamic, static, or explicit-heap-dynamic?</li>
+          </ul>
+        </div>
+        <div class="card" style="margin-bottom:14px">
+          <h3>§4.7 Expressions & Assignment <span class="p1-tag p2">P2</span></h3>
+          <ul>
+            <li>Operator precedence and associativity table</li>
+            <li>Short-circuit Boolean evaluation?</li>
+            <li>Order of operand evaluation: defined or unspecified?</li>
+            <li>Assignment: statement or expression?</li>
+          </ul>
+        </div>
+        <div class="card card-accent2">
+          <h3>§4.8 Design Rationale <span class="p1-tag p2">P2</span></h3>
+          <ul>
+            <li>For each of <strong style="color:#fff">5 numbered decisions</strong> from §4.5–4.7: one paragraph justification + one named trade-off</li>
+            <li style="color:var(--warn)">This is where AI-generated boilerplate fails most visibly — write in your own voice</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── SECTION 4: IMPLEMENTATION ── -->
+<section id="implementation">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-num">04</div>
+      <h2 class="section-title">Implementation <span>Guide</span></h2>
+    </div>
+
+    <div class="grid-2" style="margin-bottom:24px">
+      <div class="card">
+        <h3>🔧 Part 1 Implementation (D2-P1)</h3>
+        <ul>
+          <li><strong style="color:#fff">README</strong> with build + run instructions and the exact command line used</li>
+          <li><strong style="color:#fff">Lexer:</strong> tokenizes all valid programs</li>
+          <li><strong style="color:#fff">Parser:</strong> accepts valid programs → produces printable AST (<code style="font-family:'IBM Plex Mono',monospace;color:var(--accent)">--dump-ast</code> flag)</li>
+          <li><strong style="color:#fff">Error handling:</strong> rejects malformed programs with <em>useful error message including line number</em></li>
+          <li>Must handle all 3 example programs from D3</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>🚀 Part 2 Implementation (D2-P2)</h3>
+        <ul>
+          <li><strong style="color:#fff">Type Checker:</strong> consistent with D1 type system (strong/weak typing, coercion rules, type equivalence)</li>
+          <li><strong style="color:#fff">Interpreter:</strong> executes programs respecting declared scoping, precedence, associativity, parameter-passing mode</li>
+          <li><strong style="color:#fff">Runtime errors:</strong> division by zero, index out of range (if applicable), at least 1 domain-specific error</li>
+          <li><strong style="color:#fff">End-to-end:</strong> all 3 example programs execute with expected outputs</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:24px">
+      <h3>💻 Allowed Implementation Languages</h3>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">
+        <span class="tag tag-green">Python</span>
+        <span class="tag tag-green">JavaScript / TypeScript</span>
+        <span class="tag tag-green">C</span>
+        <span class="tag tag-green">C++</span>
+        <span class="tag tag-green">Java</span>
+        <span class="tag tag-green">C#</span>
+        <span class="tag tag-green">Go</span>
+        <span class="tag tag-green">Rust</span>
+        <span class="tag tag-green">OCaml</span>
+        <span class="tag tag-green">Haskell</span>
+        <span class="tag tag-yellow">ANTLR / yacc / bison / pegjs (parser generators — allowed if you can explain them in exam)</span>
+      </div>
+    </div>
+
+    <div class="alert alert-danger">
+      <strong>Critical: Consistency Between D1 and D2</strong><br>
+      Your implementation must match the language you described in D1. If D1 says "static scoping" but your interpreter resolves variables dynamically, <em>both D1 and D2 lose points</em>. You are allowed to revise D1 — but the final submitted spec must match the final submitted implementation.
+    </div>
+
+    <div class="divider"></div>
+
+    <h4>Recommended Architecture</h4>
+    <div class="grid-4">
+      <div class="card card-accent3">
+        <h3>Lexer</h3>
+        <p>Tokenize source → stream of tokens. Handle identifiers, literals, keywords, operators, separators. Emit errors with line numbers.</p>
+      </div>
+      <div class="card card-accent3">
+        <h3>Parser</h3>
+        <p>Tokens → AST. Implement your EBNF grammar. Handle precedence, associativity. <code style="font-family:'IBM Plex Mono',monospace;color:var(--accent)">--dump-ast</code> flag required.</p>
+      </div>
+      <div class="card card-accent3">
+        <h3>Type Checker</h3>
+        <p>Walk AST → verify types per your declared rules. Emit type errors before execution. Consistent with §4.5 of D1.</p>
+      </div>
+      <div class="card card-accent3">
+        <h3>Interpreter</h3>
+        <p>Walk AST → execute. Respect scoping, parameters, precedence. Produce informative runtime errors. Output matches D3.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── SECTION 5: BOOK CHAPTERS ── -->
+<section id="chapters">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-num">05</div>
+      <h2 class="section-title">Sebesta Book — <span>Chapter Map</span></h2>
+    </div>
+
+    <div class="alert alert-info" style="margin-bottom:28px">
+      The project covers Chapters 1–7 of Sebesta's <em>Concepts of Programming Languages (12th ed.)</em>. Chapters 1–5 are covered in Part 1 (Exam 1); Chapters 6–7 are added in Part 2 (Exam 2).
+    </div>
+
+    <div class="chapter-map">
+      <div class="chapter-card">
+        <div class="ch-num">CHAPTER 1</div>
+        <div class="ch-title">Preliminaries</div>
+        <div class="ch-parts"><span class="p1-tag p1">Exam 1</span></div>
+        <p style="font-size:0.8rem;color:var(--text-muted);margin-top:8px">Language evaluation criteria (readability, writability, reliability, cost), language categories, design trade-offs, implementation methods. Used in D1 §4.1.</p>
+      </div>
+      <div class="chapter-card">
+        <div class="ch-num">CHAPTER 2</div>
+        <div class="ch-title">Evolution of Major Languages</div>
+        <div class="ch-parts"><span class="p1-tag p1">Exam 1</span></div>
+        <p style="font-size:0.8rem;color:var(--text-muted);margin-top:8px">Historical context: Fortran, Lisp, COBOL, ALGOL, C, Smalltalk, Java, C#. Background for design decisions.</p>
+      </div>
+      <div class="chapter-card">
+        <div class="ch-num">CHAPTER 3</div>
+        <div class="ch-title">Describing Syntax and Semantics</div>
+        <div class="ch-parts"><span class="p1-tag p1">Exam 1</span></div>
+        <p style="font-size:0.8rem;color:var(--text-muted);margin-top:8px">EBNF (§3.1–3.2) for D1 §4.3. Attribute grammars. Dynamic semantics (§3.5) for D1 §4.4 — operational or denotational only.</p>
+      </div>
+      <div class="chapter-card">
+        <div class="ch-num">CHAPTER 4</div>
+        <div class="ch-title">Lexical and Syntax Analysis</div>
+        <div class="ch-parts"><span class="p1-tag p1">Exam 1</span></div>
+        <p style="font-size:0.8rem;color:var(--text-muted);margin-top:8px">Lexical analysis, parsing problem, recursive-descent parsing, bottom-up parsing. Directly implements D2 lexer + parser.</p>
+      </div>
+      <div class="chapter-card">
+        <div class="ch-num">CHAPTER 5</div>
+        <div class="ch-title">Names, Bindings, and Scopes</div>
+        <div class="ch-parts"><span class="p1-tag p1">Exam 1</span></div>
+        <p style="font-size:0.8rem;color:var(--text-muted);margin-top:8px">Variables, binding, scope, scope and lifetime, referencing environments, named constants. Used in D1 §4.6 — static vs. dynamic scoping, stack-dynamic lifetime.</p>
+      </div>
+      <div class="chapter-card">
+        <div class="ch-num">CHAPTER 6</div>
+        <div class="ch-title">Data Types</div>
+        <div class="ch-parts"><span class="p1-tag p2">Exam 2</span></div>
+        <p style="font-size:0.8rem;color:var(--text-muted);margin-top:8px">Primitive types, strings, arrays (§6.5), records (§6.6–6.7), tuples, unions. Strong typing (§6.12), type equivalence (§6.14 — name vs. structural). Used in D1 §4.5.</p>
+      </div>
+      <div class="chapter-card">
+        <div class="ch-num">CHAPTER 7</div>
+        <div class="ch-title">Expressions and Assignment</div>
+        <div class="ch-parts"><span class="p1-tag p2">Exam 2</span></div>
+        <p style="font-size:0.8rem;color:var(--text-muted);margin-top:8px">Arithmetic expressions, overloaded operators, type conversions/coercion (§7.4), relational + Boolean expressions, short-circuit evaluation, assignment statements. Used in D1 §4.5 and §4.7.</p>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <h4>Key Sebesta Concepts You MUST Know Per Deliverable Section</h4>
+    <div class="grid-2" style="margin-top:16px">
+      <div class="card">
+        <h3>For D1 §4.6 — Scope & Binding</h3>
+        <ul>
+          <li><strong style="color:#fff">Static (lexical) scoping</strong> vs. dynamic scoping — how variable lookup works in each</li>
+          <li><strong style="color:#fff">Stack-dynamic</strong> vs. static vs. heap-dynamic lifetime</li>
+          <li><strong style="color:#fff">Compile-time</strong> vs. run-time binding</li>
+          <li>Be ready to trace variable resolution on code examples from your own language</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>For D1 §4.5 — Type System</h3>
+        <ul>
+          <li><strong style="color:#fff">Strong typing (§6.12)</strong> — definition and what makes a language strongly typed</li>
+          <li><strong style="color:#fff">Name equivalence vs. structural equivalence (§6.14)</strong> — how they differ with record types</li>
+          <li><strong style="color:#fff">Implicit coercion (§7.4)</strong> — widening vs. narrowing, type coercion rules</li>
+          <li>Array design: static vs. dynamic, index range, subscript checking (§6.5)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── SECTION 6: AI JOURNAL ── -->
+<section id="ai-journal">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-num">06</div>
+      <h2 class="section-title">AI Usage <span>Journal</span></h2>
+    </div>
+
+    <div class="alert alert-success" style="margin-bottom:24px">
+      <strong>AI use is MANDATORY and GRADED.</strong> You are required to use AI assistants (Claude, ChatGPT, Copilot, Gemini, etc.) on this project. The point is to train you to use AI like an engineer — critically, with judgment, with full understanding of the output.
+    </div>
+
+    <div class="grid-3" style="margin-bottom:32px">
+      <div class="stat-box">
+        <div class="stat-num">≥4</div>
+        <div class="stat-label">Entries by 8 May</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">≥6</div>
+        <div class="stat-label">More entries by 22 May</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">3</div>
+        <div class="stat-label">Mandatory Experiments</div>
+      </div>
+    </div>
+
+    <h4>Three Mandatory Experiments</h4>
+    <div style="margin-top:16px">
+      <div class="experiment">
+        <div class="exp-num">EXPERIMENT E1 — Required in Part 1 Journal</div>
+        <div class="exp-title">Ask AI to generate an EBNF grammar for your language</div>
+        <div class="exp-task">Give the AI a one-paragraph description of your language. Ask it to generate the complete EBNF grammar.</div>
+        <div class="exp-report">📊 Report: Compare its grammar with yours. What did it get wrong or suboptimal? Does it handle operator precedence correctly?</div>
+      </div>
+      <div class="experiment">
+        <div class="exp-num">EXPERIMENT E2 — Required in Part 2 Journal</div>
+        <div class="exp-title">Ask AI to explain name vs. structural equivalence for your record type</div>
+        <div class="exp-task">Ask the AI to explain the difference between name equivalence and structural equivalence specifically for your language's record/structured type.</div>
+        <div class="exp-report">📊 Report: Does its explanation match Sebesta §6.14? Does the example it gives actually run under the equivalence rule it described?</div>
+      </div>
+      <div class="experiment">
+        <div class="exp-num">EXPERIMENT E3 — Required in Part 2 Journal</div>
+        <div class="exp-title">Ask AI to implement your type checker (or a non-trivial portion)</div>
+        <div class="exp-task">Ask the AI to generate the type checker code — or a significant portion of it.</div>
+        <div class="exp-report">📊 Report: Run its code on ≥3 test inputs where you know the right answer. Report any bugs (subtle or blatant) and how you fixed them.</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <h4>Journal Entry Template</h4>
+    <div class="card" style="margin-top:16px">
+      <table style="width:100%;border-collapse:collapse;font-size:0.88rem">
+        <tr>
+          <td style="padding:8px 12px;color:var(--accent);font-family:'IBM Plex Mono',monospace;font-size:11px;width:140px;border-bottom:1px solid var(--border)">Entry #</td>
+          <td style="padding:8px 12px;color:var(--text-muted);border-bottom:1px solid var(--border)">e.g., "7 of 14"</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;color:var(--accent);font-family:'IBM Plex Mono',monospace;font-size:11px;border-bottom:1px solid var(--border)">Date</td>
+          <td style="padding:8px 12px;color:var(--text-muted);border-bottom:1px solid var(--border)">YYYY-MM-DD — <strong style="color:var(--danger)">MUST be a real date during project work</strong></td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;color:var(--accent);font-family:'IBM Plex Mono',monospace;font-size:11px;border-bottom:1px solid var(--border)">Phase</td>
+          <td style="padding:8px 12px;color:var(--text-muted);border-bottom:1px solid var(--border)">Design / Lexer / Parser / Type checker / Interpreter / Testing / Writing</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;color:var(--accent);font-family:'IBM Plex Mono',monospace;font-size:11px;border-bottom:1px solid var(--border)">AI Tool</td>
+          <td style="padding:8px 12px;color:var(--text-muted);border-bottom:1px solid var(--border)">Claude Sonnet / ChatGPT / Copilot / Gemini / other (+ version if known)</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;color:var(--accent);font-family:'IBM Plex Mono',monospace;font-size:11px;border-bottom:1px solid var(--border)">Goal</td>
+          <td style="padding:8px 12px;color:var(--text-muted);border-bottom:1px solid var(--border)">One sentence — what you were trying to achieve</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;color:var(--accent);font-family:'IBM Plex Mono',monospace;font-size:11px;border-bottom:1px solid var(--border)">Prompt</td>
+          <td style="padding:8px 12px;color:var(--text-muted);border-bottom:1px solid var(--border)">Verbatim. If you iterated, show the final prompt + one-line summary of what changed.</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;color:var(--accent);font-family:'IBM Plex Mono',monospace;font-size:11px;border-bottom:1px solid var(--border)">Response</td>
+          <td style="padding:8px 12px;color:var(--text-muted);border-bottom:1px solid var(--border)">Verbatim code/text or tight summary with direct quotes of important lines</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;color:var(--accent);font-family:'IBM Plex Mono',monospace;font-size:11px;border-bottom:1px solid var(--border)">Accepted</td>
+          <td style="padding:8px 12px;color:var(--text-muted);border-bottom:1px solid var(--border)">What you kept, and <em>why</em></td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;color:var(--accent);font-family:'IBM Plex Mono',monospace;font-size:11px;border-bottom:1px solid var(--border)">Rejected / Modified</td>
+          <td style="padding:8px 12px;color:var(--text-muted);border-bottom:1px solid var(--border)">What you threw away or changed, and <em>why</em>. Be specific: bug, wrong abstraction, hallucinated API…</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;color:var(--accent);font-family:'IBM Plex Mono',monospace;font-size:11px;border-bottom:1px solid var(--border)">Errors You Caught</td>
+          <td style="padding:8px 12px;color:var(--text-muted);border-bottom:1px solid var(--border)">Mistakes the AI made. How did you detect them? What would have happened if you hadn't?</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;color:var(--accent);font-family:'IBM Plex Mono',monospace;font-size:11px">Reflection</td>
+          <td style="padding:8px 12px;color:var(--text-muted)">2–3 sentences. What did you learn about the problem — or about using AI?</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="grid-2" style="margin-top:24px">
+      <div class="alert alert-danger">
+        <strong>Backfilled journals receive ZERO.</strong> Every entry must carry a real date. A journal whose entries are all dated in the final 48 hours is not credible.
+      </div>
+      <div class="alert alert-warn">
+        <strong>Journal must include ≥3 cases where AI was WRONG,</strong> unclear, or suboptimal. Entries that just say "AI gave correct answer, I used it" get minimum credit.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── SECTION 7: RUBRIC ── -->
+<section id="rubric">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-num">07</div>
+      <h2 class="section-title">Grading <span>Rubric</span></h2>
+    </div>
+
+    <div class="alert alert-info" style="margin-bottom:24px">
+      Both parts are graded on all 6 dimensions below. Written artifacts → dimensions 1–5. In-class written exam → dimension 6. <strong>The two parts are weighted equally</strong> in the final project grade.
+    </div>
+
+    <div class="rubric-item">
+      <div class="rubric-dim"><div class="rubric-dim-icon"></div>1. Correctness</div>
+      <div class="rubric-grades">
+        <div class="grade-box grade-a"><span class="grade-label">A — Excellent</span>All stated behaviors work; no contradictions between spec and implementation.</div>
+        <div class="grade-box grade-b"><span class="grade-label">B — Good</span>Minor bugs; ≤2 contradictions that are clearly acknowledged.</div>
+        <div class="grade-box grade-c"><span class="grade-label">C — Adequate</span>Core features work; edge cases fail; some inconsistencies with spec.</div>
+        <div class="grade-box grade-d"><span class="grade-label">D/F — Weak</span>Spec and implementation diverge significantly; major features missing.</div>
+      </div>
+    </div>
+
+    <div class="rubric-item">
+      <div class="rubric-dim"><div class="rubric-dim-icon" style="background:var(--accent2)"></div>2. Design Justification</div>
+      <div class="rubric-grades">
+        <div class="grade-box grade-a"><span class="grade-label">A — Excellent</span>Every major decision justified with Sebesta terminology and a named trade-off.</div>
+        <div class="grade-box grade-b"><span class="grade-label">B — Good</span>Most decisions justified; terminology mostly correct.</div>
+        <div class="grade-box grade-c"><span class="grade-label">C — Adequate</span>Generic justifications; terminology used loosely.</div>
+        <div class="grade-box grade-d"><span class="grade-label">D/F — Weak</span>Decisions stated without justification, or justifications are boilerplate.</div>
+      </div>
+    </div>
+
+    <div class="rubric-item">
+      <div class="rubric-dim"><div class="rubric-dim-icon" style="background:var(--accent3)"></div>3. Use of Sebesta Framework</div>
+      <div class="rubric-grades">
+        <div class="grade-box grade-a"><span class="grade-label">A — Excellent</span>Accurate use of grammar formalism, semantics style, type-system and binding terminology.</div>
+        <div class="grade-box grade-b"><span class="grade-label">B — Good</span>Accurate terminology with 1–2 misapplications.</div>
+        <div class="grade-box grade-c"><span class="grade-label">C — Adequate</span>Terminology mostly present but shallowly applied.</div>
+        <div class="grade-box grade-d"><span class="grade-label">D/F — Weak</span>Terminology misused or absent.</div>
+      </div>
+    </div>
+
+    <div class="rubric-item">
+      <div class="rubric-dim"><div class="rubric-dim-icon" style="background:var(--accent4)"></div>4. Originality</div>
+      <div class="rubric-grades">
+        <div class="grade-box grade-a"><span class="grade-label">A — Excellent</span>Clearly distinct DSL with a genuine domain-specific construct.</div>
+        <div class="grade-box grade-b"><span class="grade-label">B — Good</span>Distinct DSL; domain-specific construct is present but thin.</div>
+        <div class="grade-box grade-c"><span class="grade-label">C — Adequate</span>DSL is a lightly themed reskin of a generic language.</div>
+        <div class="grade-box grade-d"><span class="grade-label">D/F — Weak</span>Indistinguishable from a generic textbook toy language.</div>
+      </div>
+    </div>
+
+    <div class="rubric-item">
+      <div class="rubric-dim"><div class="rubric-dim-icon" style="background:var(--warn)"></div>5. Code Quality</div>
+      <div class="rubric-grades">
+        <div class="grade-box grade-a"><span class="grade-label">A — Excellent</span>Clean architecture; lexer, parser, type checker, evaluator clearly separated.</div>
+        <div class="grade-box grade-b"><span class="grade-label">B — Good</span>Readable code with working separation of concerns.</div>
+        <div class="grade-box grade-c"><span class="grade-label">C — Adequate</span>Code works but is tangled; separation unclear.</div>
+        <div class="grade-box grade-d"><span class="grade-label">D/F — Weak</span>Code is opaque, undocumented, or doesn't match spec.</div>
+      </div>
+    </div>
+
+    <div class="rubric-item">
+      <div class="rubric-dim"><div class="rubric-dim-icon" style="background:var(--danger)"></div>6. Exam Performance</div>
+      <div class="rubric-grades">
+        <div class="grade-box grade-a"><span class="grade-label">A — Excellent</span>Confidently answers project-specific + general PL questions; can explain alternatives not taken.</div>
+        <div class="grade-box grade-b"><span class="grade-label">B — Good</span>Answers most questions correctly; recovers from follow-ups with light prompting.</div>
+        <div class="grade-box grade-c"><span class="grade-label">C — Adequate</span>Answers surface questions; cannot discuss design alternatives or apply to own code.</div>
+        <div class="grade-box grade-d"><span class="grade-label">D/F — Weak</span>Cannot answer fundamental questions about own submission or corresponding chapters.</div>
+      </div>
+    </div>
+
+    <div class="alert alert-warn" style="margin-top:24px">
+      <strong>Exam ↔ Artifact Interaction:</strong> If exam answers show you don't understand a section of your own submission at a basic level, the instructor may reduce the corresponding artifact grade. Conversely, strong exam answers can <em>recover</em> points on written work with unclear justification.
+    </div>
+  </div>
+</section>
+
+<!-- ── SECTION 8: RULES ── -->
+<section id="rules">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-num">08</div>
+      <h2 class="section-title">Rules, <span>Prohibitions & Permissions</span></h2>
+    </div>
+
+    <div class="grid-2">
+      <div>
+        <h4 style="color:var(--accent4);margin-bottom:16px">✅ PERMITTED / MANDATORY</h4>
+        <div class="card card-accent3" style="margin-bottom:14px">
+          <h3>AI Tool Use — REQUIRED</h3>
+          <p>You MUST use AI assistants (Claude, ChatGPT, Copilot, Gemini, etc.) and document every substantive interaction in your AI Usage Journal.</p>
+        </div>
+        <div class="card card-accent3" style="margin-bottom:14px">
+          <h3>AI-Assisted Code</h3>
+          <p>AI-generated code is fine — but you must be able to explain every line you submit in the exam.</p>
+        </div>
+        <div class="card card-accent3" style="margin-bottom:14px">
+          <h3>Parser Generators</h3>
+          <p>ANTLR, yacc/bison, pegjs are allowed as long as you can explain them during the exam.</p>
+        </div>
+        <div class="card card-accent3" style="margin-bottom:14px">
+          <h3>Free Choice of Language</h3>
+          <p>Python, JavaScript/TypeScript, C, C++, Java, C#, Go, Rust, OCaml, Haskell are all allowed.</p>
+        </div>
+        <div class="card card-accent3" style="margin-bottom:14px">
+          <h3>3 Handwritten A4 Sheets in Exam</h3>
+          <p>One side each. Must have your name + student ID. Collected at end of exam.</p>
+        </div>
+        <div class="card card-accent3">
+          <h3>Revise D1 in Part 2</h3>
+          <p>All Part 1 sections of D1 may be freely revised in Part 2 — as long as the final spec matches the final implementation.</p>
+        </div>
+      </div>
+
+      <div>
+        <h4 style="color:var(--danger);margin-bottom:16px">⛔ PROHIBITED</h4>
+        <div class="card card-danger" style="margin-bottom:14px">
+          <h3>Pasting AI text without marking it</h3>
+          <p>You may NOT paste AI-generated text directly into D1, D3, or journal reflections without marking it as a quotation AND discussing it. Rationale sections must be in your own voice.</p>
+        </div>
+        <div class="card card-danger" style="margin-bottom:14px">
+          <h3>Copying from other students</h3>
+          <p>Copying another student's (or pair's) design, code, or rationale is plagiarism. Suspiciously similar submissions will both be investigated.</p>
+        </div>
+        <div class="card card-danger" style="margin-bottom:14px">
+          <h3>Backfilling the AI Journal</h3>
+          <p>Undated or last-minute journals (all entries in final 48 hours) receive ZERO. Dates must be real and spread across the working period.</p>
+        </div>
+        <div class="card card-danger" style="margin-bottom:14px">
+          <h3>Axiomatic Semantics in D1 §4.4</h3>
+          <p>Only operational or denotational semantics accepted for this project.</p>
+        </div>
+        <div class="card card-danger" style="margin-bottom:14px">
+          <h3>Printed / photocopied notes in exam</h3>
+          <p>Only handwritten notes allowed. No laptops, phones, books, or any printed material during the exam.</p>
+        </div>
+        <div class="card card-danger">
+          <h3>Submitting by email</h3>
+          <p>All submissions must go through Microsoft Teams → CSE 341 → Assignments tab. Email submissions are not accepted.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <h4>Pair Work Rules</h4>
+    <div class="grid-2" style="margin-top:16px">
+      <div class="card">
+        <h3>Individual per-partner (always)</h3>
+        <ul>
+          <li>D1 Design Specification — each partner submits their own</li>
+          <li>D4 AI Usage Journal — always individual, even in pairs</li>
+          <li>D5 Retrospective — each partner writes their own</li>
+          <li>Written Exam — each partner answers questions about <em>their own</em> components</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>One partner submits (pairs)</h3>
+        <ul>
+          <li>D2 Implementation zip — one upload</li>
+          <li>D3 Test Report — one upload</li>
+          <li>D6 Contribution Report — one upload, signed by both</li>
+          <li>Each partner must be ≥40% of total work. Lopsided splits are detected through exams and graded down individually.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── SECTION 9: CHECKLIST ── -->
+<section id="checklist">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-num">09</div>
+      <h2 class="section-title">Submission <span>Checklists</span></h2>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <h3>📦 Before Submitting Part 1 (8 May)</h3>
+        <ul class="checklist">
+          <li>Pair declaration form submitted (if pair) — by 4 May</li>
+          <li>D1 PDF includes: language overview, lexical structure, EBNF grammar, names/binding/scope/lifetime</li>
+          <li>D1 cites Sebesta terminology correctly (readability, writability, static scoping, etc.)</li>
+          <li>D2 zip contains README with build + run instructions</li>
+          <li>D2 lexer tokenizes all valid programs</li>
+          <li>D2 parser produces printable AST with <code style="font-family:'IBM Plex Mono',monospace;color:var(--accent)">--dump-ast</code> or equivalent</li>
+          <li>D2 rejects malformed input with error message + line number</li>
+          <li>D3: 3 non-trivial programs parse successfully</li>
+          <li>D3: 5 malformed programs with error messages + line numbers</li>
+          <li>D4: ≥4 journal entries, real dates spread out, includes Experiment E1</li>
+          <li>D4: ≥3 cases where AI was wrong/suboptimal documented</li>
+          <li>D5: ½ page retrospective</li>
+          <li>D6 (pairs only): contribution report, both sections covered, workload stated</li>
+          <li>All filenames start with student ID(s) + deliverable code + _P1</li>
+          <li>All PDFs open and not password-protected</li>
+          <li>Uploaded to Teams "Project Part 1" assignment — NOT by email</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>🚀 Before Submitting Part 2 (22 May)</h3>
+        <ul class="checklist">
+          <li>D1 updated: adds semantics (2 constructs), type system, expressions section, design rationale</li>
+          <li>D1 spec is consistent with D2 implementation (scoping, typing, precedence)</li>
+          <li>D2 type checker consistent with D1 §4.5</li>
+          <li>D2 interpreter respects declared scoping rule and precedence</li>
+          <li>D2 runtime errors: division by zero, index OOB, ≥1 domain-specific error</li>
+          <li>D2 executes all 3 example programs end-to-end with expected output</li>
+          <li>D3 updated: 3 programs with actual executed output + discussion</li>
+          <li>D3: ≥1 program triggering a type error before execution</li>
+          <li>D4 continuation: ≥6 more entries dated 9–22 May, includes E2 and E3</li>
+          <li>D5: full 1-page retrospective + honest rubric self-assessment (A/B/C/D per dimension)</li>
+          <li>D6 (pairs) updated: covers full project, both partners ≥40%</li>
+          <li>All filenames use _P2</li>
+          <li>Uploaded to Teams "Project Part 2" assignment</li>
+          <li>All PDFs open and not password-protected</li>
+          <li>D1 design rationale written in your own voice (not AI-generated boilerplate)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <h4>📝 Exam Preparation Checklist</h4>
+    <div class="grid-2" style="margin-top:16px">
+      <div class="card">
+        <h3>For Exam 1 (14 May) — know your Part 1</h3>
+        <ul class="checklist">
+          <li>Can explain your scoping rule with a concrete code example from your language</li>
+          <li>Can trace how a variable lookup resolves step-by-step</li>
+          <li>Can explain every rule in your EBNF grammar</li>
+          <li>Can explain how your parser handles operator precedence</li>
+          <li>Know Sebesta Ch. 1, 3, 4, 5 terminology cold</li>
+          <li>Prepared 3 handwritten A4 note sheets with name + ID</li>
+          <li>Know what "stack-dynamic lifetime" means in your own language</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>For Exam 2 (04 Jun) — know your Part 2</h3>
+        <ul class="checklist">
+          <li>Can explain your type equivalence rule (name vs. structural) with an example</li>
+          <li>Can show how your type checker handles a specific expression</li>
+          <li>Can explain coercion rules with a concrete example from your language</li>
+          <li>Can describe how your interpreter evaluates short-circuit Boolean expressions</li>
+          <li>Know Sebesta Ch. 6, 7 terminology cold</li>
+          <li>Can trace execution of your interpreter on a code snippet</li>
+          <li>Prepared 3 handwritten A4 note sheets for Exam 2</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <p>CSE 341 — Concepts of Programming Languages · Gebze Technical University · Spring 2026</p>
+    <p style="margin-top:8px;opacity:0.5">Based on Sebesta, Concepts of Programming Languages, 12th ed. · Project Handout + Submission Guide</p>
+  </div>
+</footer>
+
+</body>
+</html>
