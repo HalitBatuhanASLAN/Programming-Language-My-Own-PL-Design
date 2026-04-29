@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CSE 341 — Mini Language Project Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #11111a;
+    --surface2: #1a1a28;
+    --border: #2a2a40;
+    --accent: #7c6aff;
+    --accent2: #ff6a6a;
+    --accent3: #6affd4;
+    --accent4: #ffd96a;
+    --text: #e8e8f0;
+    --muted: #7070a0;
+    --white: #ffffff;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    overflow-x: hidden;
+  }
+
+  /* ─── NAV ─── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(10,10,15,0.85);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex; align-items: center; gap: 0; height: 56px;
+    overflow-x: auto;
+  }
+  nav a {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0 1rem;
+    height: 56px;
+    display: flex; align-items: center;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  nav a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+  nav .logo {
+    font-size: 0.85rem; font-weight: 800; color: var(--white);
+    margin-right: 1.5rem; letter-spacing: -0.02em; flex-shrink: 0;
+    border-bottom: none !important;
+  }
+  nav .logo span { color: var(--accent); }
+
+  /* ─── HERO ─── */
+  .hero {
+    min-height: 100vh;
+    display: flex; flex-direction: column; justify-content: center;
+    padding: 8rem 4rem 4rem;
+    position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute; top: -200px; right: -200px;
+    width: 700px; height: 700px;
+    background: radial-gradient(circle, rgba(124,106,255,0.15) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero::after {
+    content: '';
+    position: absolute; bottom: -100px; left: -100px;
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(106,255,212,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem; color: var(--accent3);
+    letter-spacing: 0.2em; text-transform: uppercase;
+    margin-bottom: 1.5rem;
+    opacity: 0; animation: fadeUp 0.6s 0.2s forwards;
+  }
+  .hero h1 {
+    font-size: clamp(2.5rem, 6vw, 5rem);
+    font-weight: 800; line-height: 1.0;
+    letter-spacing: -0.03em;
+    margin-bottom: 1.5rem;
+    opacity: 0; animation: fadeUp 0.6s 0.4s forwards;
+  }
+  .hero h1 .line2 { color: var(--accent); display: block; }
+  .hero-desc {
+    font-size: 1.15rem; color: var(--muted); max-width: 600px;
+    line-height: 1.7; margin-bottom: 3rem;
+    opacity: 0; animation: fadeUp 0.6s 0.6s forwards;
+  }
+  .hero-cards {
+    display: flex; gap: 1rem; flex-wrap: wrap;
+    opacity: 0; animation: fadeUp 0.6s 0.8s forwards;
+  }
+  .hero-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.2rem 1.8rem;
+    display: flex; flex-direction: column; gap: 0.3rem;
+  }
+  .hero-card .label {
+    font-size: 0.65rem; text-transform: uppercase;
+    letter-spacing: 0.15em; color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .hero-card .value {
+    font-size: 1.1rem; font-weight: 700; color: var(--white);
+  }
+  .hero-card.urgent .value { color: var(--accent2); }
+  .hero-card.ok .value { color: var(--accent3); }
+
+  /* ─── SECTIONS ─── */
+  section {
+    padding: 5rem 4rem;
+    border-top: 1px solid var(--border);
+  }
+  .section-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem; color: var(--accent);
+    letter-spacing: 0.2em; text-transform: uppercase;
+    margin-bottom: 0.8rem;
+  }
+  h2 {
+    font-size: clamp(1.8rem, 3vw, 2.8rem);
+    font-weight: 800; letter-spacing: -0.03em;
+    margin-bottom: 2.5rem; line-height: 1.1;
+  }
+  h3 {
+    font-size: 1.1rem; font-weight: 700;
+    margin-bottom: 0.8rem; color: var(--white);
+  }
+
+  /* ─── TIMELINE ─── */
+  .timeline { display: flex; flex-direction: column; gap: 0; }
+  .tl-item {
+    display: grid; grid-template-columns: 180px 1px 1fr;
+    gap: 0 2rem; align-items: start;
+  }
+  .tl-date {
+    text-align: right;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem; color: var(--accent4);
+    font-weight: 500; padding-top: 0.5rem;
+    padding-bottom: 2rem;
+  }
+  .tl-line {
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .tl-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--accent); flex-shrink: 0;
+    margin-top: 0.6rem;
+    box-shadow: 0 0 0 3px rgba(124,106,255,0.2);
+  }
+  .tl-dot.red { background: var(--accent2); box-shadow: 0 0 0 3px rgba(255,106,106,0.2); }
+  .tl-dot.green { background: var(--accent3); box-shadow: 0 0 0 3px rgba(106,255,212,0.2); }
+  .tl-dot.yellow { background: var(--accent4); box-shadow: 0 0 0 3px rgba(255,217,106,0.2); }
+  .tl-connector {
+    flex: 1; width: 1px; background: var(--border);
+    min-height: 40px;
+  }
+  .tl-content {
+    padding-top: 0.2rem; padding-bottom: 2rem;
+  }
+  .tl-content h3 { font-size: 1rem; margin-bottom: 0.3rem; }
+  .tl-content p { font-size: 0.9rem; color: var(--muted); line-height: 1.6; }
+  .badge {
+    display: inline-block;
+    font-size: 0.65rem; font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    padding: 0.2rem 0.6rem; border-radius: 4px;
+    margin-bottom: 0.5rem;
+  }
+  .badge-red { background: rgba(255,106,106,0.15); color: var(--accent2); border: 1px solid rgba(255,106,106,0.3); }
+  .badge-green { background: rgba(106,255,212,0.1); color: var(--accent3); border: 1px solid rgba(106,255,212,0.2); }
+  .badge-yellow { background: rgba(255,217,106,0.1); color: var(--accent4); border: 1px solid rgba(255,217,106,0.2); }
+  .badge-purple { background: rgba(124,106,255,0.15); color: var(--accent); border: 1px solid rgba(124,106,255,0.3); }
+
+  /* ─── DELIVERABLES GRID ─── */
+  .del-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+  }
+  .del-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.8rem;
+    position: relative; overflow: hidden;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .del-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .del-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: var(--accent-line, var(--accent));
+  }
+  .del-card.d1 { --accent-line: var(--accent); }
+  .del-card.d2 { --accent-line: var(--accent3); }
+  .del-card.d3 { --accent-line: var(--accent4); }
+  .del-card.d4 { --accent-line: var(--accent2); }
+  .del-card.d5 { --accent-line: #ff9f6a; }
+  .del-card.d6 { --accent-line: #c06aff; }
+  .del-id {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem; letter-spacing: 0.15em;
+    text-transform: uppercase; color: var(--muted);
+    margin-bottom: 0.5rem;
+  }
+  .del-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.8rem; }
+  .del-format {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem; color: var(--accent4);
+    margin-bottom: 1rem;
+  }
+  .del-list { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
+  .del-list li {
+    font-size: 0.85rem; color: var(--muted); line-height: 1.5;
+    padding-left: 1.2rem; position: relative;
+  }
+  .del-list li::before {
+    content: '›'; position: absolute; left: 0; color: var(--accent3);
+  }
+
+  /* ─── CHAPTER TABLE ─── */
+  .chap-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1rem;
+  }
+  .chap-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.4rem;
+    transition: border-color 0.2s;
+    cursor: default;
+  }
+  .chap-card:hover { border-color: var(--accent); }
+  .chap-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem; color: var(--accent);
+    letter-spacing: 0.15em; text-transform: uppercase;
+    margin-bottom: 0.4rem;
+  }
+  .chap-title { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.8rem; }
+  .chap-topics {
+    display: flex; flex-wrap: wrap; gap: 0.4rem;
+  }
+  .topic-pill {
+    font-size: 0.65rem;
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.2rem 0.5rem;
+    color: var(--muted);
+  }
+
+  /* ─── RULES SECTION ─── */
+  .rules-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+  }
+  .rule-group {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.8rem;
+  }
+  .rule-group h3 {
+    display: flex; align-items: center; gap: 0.6rem;
+    margin-bottom: 1.2rem;
+  }
+  .rule-icon {
+    width: 28px; height: 28px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.9rem; flex-shrink: 0;
+  }
+  .icon-red { background: rgba(255,106,106,0.15); }
+  .icon-green { background: rgba(106,255,212,0.1); }
+  .icon-yellow { background: rgba(255,217,106,0.1); }
+  .rule-list { list-style: none; display: flex; flex-direction: column; gap: 0.7rem; }
+  .rule-list li {
+    font-size: 0.88rem; line-height: 1.5; color: var(--muted);
+    padding-left: 1.2rem; position: relative;
+  }
+  .rule-list li::before { content: '•'; position: absolute; left: 0; }
+  .rule-list.forbidden li::before { color: var(--accent2); }
+  .rule-list.allowed li::before { color: var(--accent3); }
+  .rule-list.mandatory li::before { color: var(--accent4); }
+
+  /* ─── AI JOURNAL ─── */
+  .journal-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    max-width: 900px;
+  }
+  .journal-header {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    padding: 1.2rem 2rem;
+    display: flex; gap: 0.8rem; align-items: center;
+  }
+  .journal-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .journal-body { padding: 2rem; display: flex; flex-direction: column; gap: 1.2rem; }
+  .field-row { display: grid; grid-template-columns: 140px 1fr; gap: 1rem; align-items: start; }
+  .field-key {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem; color: var(--accent);
+    text-transform: uppercase; letter-spacing: 0.1em;
+    padding-top: 0.1rem;
+  }
+  .field-val { font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+  .field-val.highlight { color: var(--text); }
+  .field-val code {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.1rem 0.4rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--accent3);
+  }
+
+  /* ─── RUBRIC ─── */
+  .rubric-table {
+    width: 100%; border-collapse: collapse; font-size: 0.85rem;
+  }
+  .rubric-table th {
+    background: var(--surface2);
+    padding: 0.9rem 1.2rem;
+    text-align: left;
+    font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+  }
+  .rubric-table th:first-child { color: var(--white); }
+  .rubric-table td {
+    padding: 0.9rem 1.2rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+    line-height: 1.5;
+    color: var(--muted);
+  }
+  .rubric-table td:first-child { font-weight: 700; color: var(--text); }
+  .rubric-table tr:hover td { background: rgba(124,106,255,0.04); }
+  .grade-a { color: var(--accent3) !important; font-weight: 600; }
+  .grade-b { color: var(--accent4) !important; font-weight: 600; }
+  .grade-c { color: #ff9f6a !important; font-weight: 600; }
+  .grade-d { color: var(--accent2) !important; font-weight: 600; }
+
+  /* ─── DOMAIN IDEAS ─── */
+  .domain-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem;
+  }
+  .domain-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.4rem;
+    transition: all 0.2s;
+  }
+  .domain-card:hover { border-color: var(--accent3); background: var(--surface2); }
+  .domain-name { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.5rem; }
+  .domain-desc { font-size: 0.82rem; color: var(--muted); line-height: 1.5; }
+
+  /* ─── REQUIREMENTS CHECKLIST ─── */
+  .checklist {
+    display: flex; flex-direction: column; gap: 0.7rem;
+    max-width: 800px;
+  }
+  .check-item {
+    display: flex; gap: 1rem; align-items: flex-start;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.2rem;
+  }
+  .check-box {
+    width: 20px; height: 20px; border-radius: 5px;
+    border: 1.5px solid var(--border);
+    flex-shrink: 0; margin-top: 0.1rem;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.7rem;
+    background: rgba(106,255,212,0.1);
+    border-color: rgba(106,255,212,0.3);
+    color: var(--accent3);
+  }
+  .check-text { font-size: 0.88rem; line-height: 1.6; color: var(--muted); }
+  .check-text strong { color: var(--text); font-weight: 600; }
+
+  /* ─── STRATEGY ─── */
+  .strategy-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.5rem;
+  }
+  .strategy-card {
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem;
+    position: relative;
+  }
+  .strategy-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 3rem; font-weight: 700;
+    color: var(--border);
+    position: absolute; top: 1rem; right: 1.5rem;
+    line-height: 1;
+  }
+  .strategy-card h3 { font-size: 1rem; margin-bottom: 0.7rem; color: var(--accent); }
+  .strategy-card p { font-size: 0.87rem; color: var(--muted); line-height: 1.6; }
+
+  /* ─── FOOTER ─── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 2rem 4rem;
+    text-align: center;
+    font-size: 0.8rem; color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ─── KEYFRAMES ─── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ─── CODE BLOCK ─── */
+  .code-block {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    line-height: 1.8;
+    color: var(--accent3);
+    overflow-x: auto;
+    margin: 1.5rem 0;
+  }
+  .code-block .kw { color: var(--accent); }
+  .code-block .cm { color: var(--muted); font-style: italic; }
+  .code-block .num { color: var(--accent4); }
+
+  /* callout */
+  .callout {
+    background: rgba(124,106,255,0.08);
+    border: 1px solid rgba(124,106,255,0.25);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    padding: 1.2rem 1.5rem;
+    font-size: 0.9rem; line-height: 1.7;
+    color: var(--text);
+    margin: 1.5rem 0;
+  }
+  .callout.warning {
+    background: rgba(255,106,106,0.08);
+    border-color: rgba(255,106,106,0.25);
+    border-left-color: var(--accent2);
+  }
+  .callout.tip {
+    background: rgba(106,255,212,0.06);
+    border-color: rgba(106,255,212,0.2);
+    border-left-color: var(--accent3);
+  }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+  @media (max-width: 700px) {
+    section { padding: 3rem 1.5rem; }
+    .hero { padding: 6rem 1.5rem 3rem; }
+    .two-col { grid-template-columns: 1fr; }
+    nav a { font-size: 0.65rem; padding: 0 0.6rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a class="logo" href="#">CSE<span>341</span></a>
+  <a href="#overview">Overview</a>
+  <a href="#timeline">Timeline</a>
+  <a href="#deliverables">Deliverables</a>
+  <a href="#chapters">Chapters</a>
+  <a href="#domain">Domain</a>
+  <a href="#requirements">Requirements</a>
+  <a href="#rules">Rules</a>
+  <a href="#journal">AI Journal</a>
+  <a href="#rubric">Rubric</a>
+  <a href="#strategy">Strategy</a>
+</nav>
+
+<!-- HERO -->
+<div class="hero" id="overview">
+  <div class="hero-tag">// CSE 341 · Gebze Technical University · Spring 2026</div>
+  <h1>
+    Design &amp; Implement
+    <span class="line2">Your Own Language</span>
+  </h1>
+  <p class="hero-desc">
+    Build a domain-specific programming language from scratch — lexer, parser, type checker, and interpreter — 
+    and defend every design decision using Sebesta's textbook vocabulary in a live oral viva.
+  </p>
+  <div class="hero-cards">
+    <div class="hero-card urgent">
+      <div class="label">Submission Deadline</div>
+      <div class="value">22 May 2026 · 23:59</div>
+    </div>
+    <div class="hero-card ok">
+      <div class="label">Oral Defense</div>
+      <div class="value">Week of 1–5 June 2026</div>
+    </div>
+    <div class="hero-card">
+      <div class="label">Domain Approval</div>
+      <div class="value">By 10 April 2026</div>
+    </div>
+    <div class="hero-card">
+      <div class="label">Team Size</div>
+      <div class="value">Solo</div>
+    </div>
+    <div class="hero-card">
+      <div class="label">Deliverables</div>
+      <div class="value">5 Artifacts + Oral Defense</div>
+    </div>
+  </div>
+</div>
+
+<!-- TIMELINE -->
+<section id="timeline">
+  <div class="section-tag">// 01 — Schedule</div>
+  <h2>Project Timeline</h2>
+
+  <div class="timeline">
+    <div class="tl-item">
+      <div class="tl-date">10 April 2026<br>Hard Deadline</div>
+      <div class="tl-line"><div class="tl-dot red"></div><div class="tl-connector"></div></div>
+      <div class="tl-content">
+        <div class="badge badge-red">⚠ Domain Approval</div>
+        <h3>Submit Your Domain Choice for Approval</h3>
+        <p>First-come, first-served. No two students may pick the same domain. Submit to instructor and wait for confirmation before proceeding. If you miss this, you can't start properly.</p>
+      </div>
+    </div>
+
+    <div class="tl-item">
+      <div class="tl-date">April 2026<br>Week 1–2</div>
+      <div class="tl-line"><div class="tl-dot"></div><div class="tl-connector"></div></div>
+      <div class="tl-content">
+        <div class="badge badge-purple">Phase 1</div>
+        <h3>Design Specification (D1)</h3>
+        <p>Write your language design: EBNF grammar, type system, scoping rules, semantics, expressions. This is the foundation everything else depends on.</p>
+      </div>
+    </div>
+
+    <div class="tl-item">
+      <div class="tl-date">April–May 2026<br>Week 3–5</div>
+      <div class="tl-line"><div class="tl-dot"></div><div class="tl-connector"></div></div>
+      <div class="tl-content">
+        <div class="badge badge-purple">Phase 2</div>
+        <h3>Implementation (D2)</h3>
+        <p>Build the lexer → parser → type checker → interpreter pipeline. Maintain consistency with D1 throughout. Any change to D1 must be reflected in code and vice versa.</p>
+      </div>
+    </div>
+
+    <div class="tl-item">
+      <div class="tl-date">May 2026<br>Week 6–7</div>
+      <div class="tl-line"><div class="tl-dot"></div><div class="tl-connector"></div></div>
+      <div class="tl-content">
+        <div class="badge badge-purple">Phase 3</div>
+        <h3>Testing &amp; AI Journal (D3, D4)</h3>
+        <p>Write 3 valid + 5 malformed programs. Run the 3 mandatory AI experiments (E1: grammar, E2: type equivalence, E3: type checker). Log all significant AI sessions with dates throughout the project.</p>
+      </div>
+    </div>
+
+    <div class="tl-item">
+      <div class="tl-date">22 May 2026<br>23:59 SHARP</div>
+      <div class="tl-line"><div class="tl-dot red"></div><div class="tl-connector"></div></div>
+      <div class="tl-content">
+        <div class="badge badge-red">🔴 Final Submission</div>
+        <h3>Submit All 5 Artifacts as Single ZIP</h3>
+        <p>D1 (Design PDF) · D2 (Git repo link) · D3 (Test Report PDF) · D4 (AI Journal PDF) · D5 (Retrospective PDF). Late policy applies per course syllabus.</p>
+      </div>
+    </div>
+
+    <div class="tl-item">
+      <div class="tl-date">1–5 June 2026<br>Scheduled Slots</div>
+      <div class="tl-line"><div class="tl-dot yellow"></div><div class="tl-connector"></div></div>
+      <div class="tl-content">
+        <div class="badge badge-yellow">Oral Viva</div>
+        <h3>15-Minute Oral Defense</h3>
+        <p>5 min live demo + 10 min Q&amp;A. You may be asked to write code on the fly in your DSL and modify parts of your program. Schedule posted by 20 May.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DELIVERABLES -->
+<section id="deliverables">
+  <div class="section-tag">// 02 — What to Submit</div>
+  <h2>The 6 Deliverables</h2>
+
+  <div class="del-grid">
+    <div class="del-card d1">
+      <div class="del-id">D1</div>
+      <div class="del-title">Design Specification</div>
+      <div class="del-format">PDF · 8–12 pages</div>
+      <ul class="del-list">
+        <li><strong>§4.1</strong> Language overview, sample program, criteria justification (Ch.1)</li>
+        <li><strong>§4.2</strong> Lexical structure — token categories, regex patterns</li>
+        <li><strong>§4.3</strong> Complete unambiguous EBNF grammar (Ch.3)</li>
+        <li><strong>§4.4</strong> Operational or denotational semantics for 2 constructs (Ch.3)</li>
+        <li><strong>§4.5</strong> Type system — primitives, strong typing, coercion, equivalence (Ch.6)</li>
+        <li><strong>§4.6</strong> Names, binding, scope, lifetime (Ch.5)</li>
+        <li><strong>§4.7</strong> Expressions — precedence table, short-circuit, assignment (Ch.7)</li>
+        <li><strong>§4.8</strong> Design rationale for 5 decisions — written in YOUR own voice</li>
+      </ul>
+    </div>
+
+    <div class="del-card d2">
+      <div class="del-id">D2</div>
+      <div class="del-title">Implementation</div>
+      <div class="del-format">Public Git Repository + README</div>
+      <ul class="del-list">
+        <li>Working <strong>lexer</strong> — tokenises all D3 programs</li>
+        <li>Working <strong>parser</strong> — produces AST; <code>--dump-ast</code> flag</li>
+        <li><strong>Type checker</strong> consistent with D1 type rules</li>
+        <li><strong>Interpreter</strong> — respects scoping, precedence, param-passing</li>
+        <li>Useful error messages with line numbers for malformed input</li>
+        <li>Runtime errors: division-by-zero, index-out-of-range, domain-specific error</li>
+        <li>Runs 3 example programs end-to-end from command line</li>
+      </ul>
+    </div>
+
+    <div class="del-card d3">
+      <div class="del-id">D3</div>
+      <div class="del-title">Example Programs &amp; Test Report</div>
+      <div class="del-format">Source files + PDF · 3–5 pages</div>
+      <ul class="del-list">
+        <li>3 non-trivial programs exercising every control structure, structured type, functions, domain construct</li>
+        <li>For each: source listing, expected output, 3–5 sentence discussion</li>
+        <li>5 malformed programs with parser error messages + line numbers</li>
+        <li>1 type-error program caught before execution</li>
+      </ul>
+    </div>
+
+    <div class="del-card d4">
+      <div class="del-id">D4</div>
+      <div class="del-title">AI Usage Journal</div>
+      <div class="del-format">PDF · 6–15 pages · Timestamped</div>
+      <ul class="del-list">
+        <li>10–20 most substantive AI sessions logged</li>
+        <li>Entries must span multiple weeks — not all in the final week</li>
+        <li>3 mandatory experiments: E1 (EBNF), E2 (type equivalence), E3 (type checker)</li>
+        <li>Each entry: date, tool, prompt, response, accepted/rejected, errors caught, reflection</li>
+        <li>Include conversation link (share URL) for every entry</li>
+        <li>At least 3 documented cases where AI was wrong or suboptimal</li>
+      </ul>
+    </div>
+
+    <div class="del-card d5">
+      <div class="del-id">D5</div>
+      <div class="del-title">Retrospective &amp; Self-Assessment</div>
+      <div class="del-format">PDF · Exactly 1 page</div>
+      <ul class="del-list">
+        <li>½ page: What you'd change, what didn't work, hardest design decision</li>
+        <li>½ page: Self-grade A/B/C/D on each of 6 rubric dimensions with justification</li>
+        <li>A reflexive "A across the board" gets no credit — be honest</li>
+      </ul>
+    </div>
+
+    <div class="del-card d6">
+      <div class="del-id">OD</div>
+      <div class="del-title">Oral Defense</div>
+      <div class="del-format">In Person · 15 Minutes</div>
+      <ul class="del-list">
+        <li>5 min: Live demo of your language running</li>
+        <li>10 min: Q&amp;A on your design decisions using Sebesta's terminology</li>
+        <li>You may be asked to write code on the fly in your DSL</li>
+        <li>You may be asked to modify parts of your program live</li>
+        <li>Carries <strong>substantial weight</strong> independent of written artifacts</li>
+        <li>Can recover points from unclear written work — or lose points from it</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout warning" style="margin-top:2rem">
+    ⚠ <strong>Consistency is graded strictly.</strong> If D1 says "static scoping" but your interpreter resolves variables dynamically, both D1 and D2 lose points. You may revise D1, but the final submitted spec must match your final submitted code.
+  </div>
+</section>
+
+<!-- CHAPTERS -->
+<section id="chapters">
+  <div class="section-tag">// 03 — Required Knowledge Base</div>
+  <h2>Relevant Book Chapters (Sebesta Ch. 1–7)</h2>
+  <p style="color:var(--muted);margin-bottom:2rem;max-width:700px;line-height:1.7">
+    Every design decision in your project must be justified using terminology from these chapters. The oral defense will specifically test your command of these concepts.
+  </p>
+
+  <div class="chap-grid">
+    <div class="chap-card">
+      <div class="chap-num">Chapter 1</div>
+      <div class="chap-title">Preliminaries</div>
+      <div class="chap-topics">
+        <span class="topic-pill">Readability</span>
+        <span class="topic-pill">Writability</span>
+        <span class="topic-pill">Reliability</span>
+        <span class="topic-pill">Cost</span>
+        <span class="topic-pill">Language Categories</span>
+        <span class="topic-pill">Design Trade-Offs</span>
+        <span class="topic-pill">Implementation Methods</span>
+      </div>
+      <p style="font-size:0.78rem;color:var(--muted);margin-top:0.8rem;line-height:1.5">
+        Use §1.3 criteria to justify your language's design priorities in D1 §4.1. Which criteria does your DSL maximize, which does it sacrifice?
+      </p>
+    </div>
+
+    <div class="chap-card">
+      <div class="chap-num">Chapter 2</div>
+      <div class="chap-title">Evolution of Programming Languages</div>
+      <div class="chap-topics">
+        <span class="topic-pill">Fortran</span>
+        <span class="topic-pill">ALGOL 60</span>
+        <span class="topic-pill">Lisp</span>
+        <span class="topic-pill">C++</span>
+        <span class="topic-pill">Java</span>
+        <span class="topic-pill">C#</span>
+        <span class="topic-pill">Prolog</span>
+      </div>
+      <p style="font-size:0.78rem;color:var(--muted);margin-top:0.8rem;line-height:1.5">
+        Understand how real languages solved problems you'll face. Reference design patterns from existing languages to justify your own choices.
+      </p>
+    </div>
+
+    <div class="chap-card">
+      <div class="chap-num">Chapter 3</div>
+      <div class="chap-title">Describing Syntax and Semantics</div>
+      <div class="chap-topics">
+        <span class="topic-pill">EBNF</span>
+        <span class="topic-pill">BNF</span>
+        <span class="topic-pill">Attribute Grammars</span>
+        <span class="topic-pill">Operational Semantics</span>
+        <span class="topic-pill">Denotational Semantics</span>
+        <span class="topic-pill">Ambiguity</span>
+      </div>
+      <p style="font-size:0.78rem;color:var(--muted);margin-top:0.8rem;line-height:1.5">
+        Critical for D1 §4.3 and §4.4. Your EBNF must be unambiguous. Choose one semantics style (operational or denotational) and apply it consistently. Axiomatic semantics is NOT accepted.
+      </p>
+    </div>
+
+    <div class="chap-card">
+      <div class="chap-num">Chapter 4</div>
+      <div class="chap-title">Lexical and Syntax Analysis</div>
+      <div class="chap-topics">
+        <span class="topic-pill">Lexical Analysis</span>
+        <span class="topic-pill">Parsing Problem</span>
+        <span class="topic-pill">Recursive-Descent</span>
+        <span class="topic-pill">Bottom-Up Parsing</span>
+      </div>
+      <p style="font-size:0.78rem;color:var(--muted);margin-top:0.8rem;line-height:1.5">
+        Directly informs D2 implementation. You must understand your parser well enough to explain it in the oral defense — even if you used a parser generator like ANTLR.
+      </p>
+    </div>
+
+    <div class="chap-card">
+      <div class="chap-num">Chapter 5</div>
+      <div class="chap-title">Names, Bindings, and Scopes</div>
+      <div class="chap-topics">
+        <span class="topic-pill">Identifier Rules</span>
+        <span class="topic-pill">Binding Time</span>
+        <span class="topic-pill">Static Scoping</span>
+        <span class="topic-pill">Dynamic Scoping</span>
+        <span class="topic-pill">Lifetime</span>
+        <span class="topic-pill">Referencing Environments</span>
+        <span class="topic-pill">Named Constants</span>
+      </div>
+      <p style="font-size:0.78rem;color:var(--muted);margin-top:0.8rem;line-height:1.5">
+        Required for D1 §4.6. Must answer: static or dynamic scope? Why? What breaks if you switch? Stack-dynamic or static lifetime?
+      </p>
+    </div>
+
+    <div class="chap-card">
+      <div class="chap-num">Chapter 6</div>
+      <div class="chap-title">Data Types</div>
+      <div class="chap-topics">
+        <span class="topic-pill">Primitive Types</span>
+        <span class="topic-pill">Arrays</span>
+        <span class="topic-pill">Records</span>
+        <span class="topic-pill">Enumeration</span>
+        <span class="topic-pill">Strong Typing §6.12</span>
+        <span class="topic-pill">Type Checking §6.13</span>
+        <span class="topic-pill">Name vs Structural Equiv §6.14</span>
+        <span class="topic-pill">Union Types</span>
+        <span class="topic-pill">Pointer Types</span>
+      </div>
+      <p style="font-size:0.78rem;color:var(--muted);margin-top:0.8rem;line-height:1.5">
+        Core for D1 §4.5. §6.14 (type equivalence) is directly tested in AI experiment E2. §6.12 (strong typing) must be explicitly justified.
+      </p>
+    </div>
+
+    <div class="chap-card">
+      <div class="chap-num">Chapter 7</div>
+      <div class="chap-title">Expressions and Assignment Statements</div>
+      <div class="chap-topics">
+        <span class="topic-pill">Arithmetic Expressions</span>
+        <span class="topic-pill">Operator Precedence</span>
+        <span class="topic-pill">Associativity</span>
+        <span class="topic-pill">Overloaded Operators</span>
+        <span class="topic-pill">Type Conversions §7.4</span>
+        <span class="topic-pill">Short-Circuit §7.6</span>
+        <span class="topic-pill">Assignment Statements §7.7</span>
+        <span class="topic-pill">Mixed-Mode §7.8</span>
+      </div>
+      <p style="font-size:0.78rem;color:var(--muted);margin-top:0.8rem;line-height:1.5">
+        Required for D1 §4.7. You need a full precedence/associativity table, a decision on short-circuit evaluation, and a decision on whether assignment is a statement or expression.
+      </p>
+    </div>
+  </div>
+
+  <div class="callout tip" style="margin-top:2rem">
+    💡 <strong>Tip:</strong> Chapters 8 (Control Structures) and 9 (Subprograms) from the book also apply — control flow constructs and function/procedure design must be implemented in your language. Know parameter-passing methods (by value, by reference, etc.) for the oral defense.
+  </div>
+</section>
+
+<!-- DOMAIN CHOICE -->
+<section id="domain">
+  <div class="section-tag">// 04 — Language Domain</div>
+  <h2>Choosing Your Domain</h2>
+
+  <div class="callout warning" style="margin-bottom:2rem">
+    ⚠ <strong>First-come, first-served.</strong> No two students may submit the same domain. Get instructor approval by 10 April 2026. Start thinking NOW.
+  </div>
+
+  <h3 style="margin-bottom:1rem;color:var(--muted)">Suggested Domains (from handout)</h3>
+  <div class="domain-grid" style="margin-bottom:2.5rem">
+    <div class="domain-card">
+      <div class="domain-name">🐢 TurtleLang</div>
+      <div class="domain-desc">Drawing geometric shapes with turtle graphics. Recursion + user-defined shape procedures.</div>
+    </div>
+    <div class="domain-card">
+      <div class="domain-name">♟ ChessDSL</div>
+      <div class="domain-desc">Describing and solving chess puzzles. Piece placement, legal moves, constraint expressions.</div>
+    </div>
+    <div class="domain-card">
+      <div class="domain-name">🗄 QueryLite</div>
+      <div class="domain-desc">Mini-query language over CSV files with filters, joins, and aggregates.</div>
+    </div>
+    <div class="domain-card">
+      <div class="domain-name">🎵 MusicScript</div>
+      <div class="domain-desc">Describing melodies: notes, durations, loops, transposition.</div>
+    </div>
+    <div class="domain-card">
+      <div class="domain-name">⚡ CircuitLang</div>
+      <div class="domain-desc">Describing digital circuits: gates, wires, simulation.</div>
+    </div>
+    <div class="domain-card">
+      <div class="domain-name">🍳 RecipeLang</div>
+      <div class="domain-desc">Scaling and substituting ingredients in recipes with unit types.</div>
+    </div>
+    <div class="domain-card">
+      <div class="domain-name">📊 PlotDSL</div>
+      <div class="domain-desc">Declarative 2D data plots with statistical transforms.</div>
+    </div>
+    <div class="domain-card" style="border-style:dashed">
+      <div class="domain-name">✨ Your Idea</div>
+      <div class="domain-desc">Any distinct, non-trivial application domain. Must meet all minimum requirements below.</div>
+    </div>
+  </div>
+
+  <h3 style="margin-bottom:1.2rem">Minimum Requirements for ANY Domain</h3>
+  <div class="checklist">
+    <div class="check-item">
+      <div class="check-box">✓</div>
+      <div class="check-text"><strong>3+ primitive types</strong> and <strong>1 structured type</strong> (array, record, or user-defined)</div>
+    </div>
+    <div class="check-item">
+      <div class="check-box">✓</div>
+      <div class="check-text"><strong>1+ control structure</strong> beyond sequencing — if, while, for, or pattern-match</div>
+    </div>
+    <div class="check-item">
+      <div class="check-box">✓</div>
+      <div class="check-text"><strong>User-defined functions or procedures</strong> with parameters</div>
+    </div>
+    <div class="check-item">
+      <div class="check-box">✓</div>
+      <div class="check-text"><strong>At least 1 domain-specific construct</strong> that justifies why this is a DSL, not a generic language</div>
+    </div>
+    <div class="check-item">
+      <div class="check-box">✓</div>
+      <div class="check-text"><strong>Nontrivial expression language</strong> with operators raising interesting questions (precedence, associativity, mixed-mode, coercion)</div>
+    </div>
+    <div class="check-item">
+      <div class="check-box">✓</div>
+      <div class="check-text"><strong>At least 3 design choices different from ShapeScript</strong> (the sample in §7 of the handout)</div>
+    </div>
+  </div>
+</section>
+
+<!-- REQUIREMENTS -->
+<section id="requirements">
+  <div class="section-tag">// 05 — Technical Requirements</div>
+  <h2>Implementation Requirements (D2)</h2>
+
+  <div class="two-col">
+    <div>
+      <h3 style="color:var(--accent3);margin-bottom:1rem">Architecture — Separate Concerns Clearly</h3>
+      <div class="checklist">
+        <div class="check-item">
+          <div class="check-box">✓</div>
+          <div class="check-text"><strong>Lexer</strong> — tokenizes input, classifies all token types</div>
+        </div>
+        <div class="check-item">
+          <div class="check-box">✓</div>
+          <div class="check-text"><strong>Parser</strong> — builds AST from token stream, <code>--dump-ast</code> flag required</div>
+        </div>
+        <div class="check-item">
+          <div class="check-box">✓</div>
+          <div class="check-text"><strong>Type Checker</strong> — enforces D1 type rules before execution</div>
+        </div>
+        <div class="check-item">
+          <div class="check-box">✓</div>
+          <div class="check-text"><strong>Interpreter / Evaluator</strong> — executes programs, respects scoping and param-passing</div>
+        </div>
+      </div>
+
+      <h3 style="color:var(--accent3);margin-bottom:1rem;margin-top:2rem">Allowed Languages</h3>
+      <div style="display:flex;flex-wrap:wrap;gap:0.5rem">
+        <span class="badge badge-purple">Python</span>
+        <span class="badge badge-purple">JavaScript/TypeScript</span>
+        <span class="badge badge-purple">C / C++</span>
+        <span class="badge badge-purple">Java</span>
+        <span class="badge badge-purple">C#</span>
+        <span class="badge badge-purple">Go</span>
+        <span class="badge badge-purple">Rust</span>
+        <span class="badge badge-purple">OCaml</span>
+        <span class="badge badge-purple">Haskell</span>
+      </div>
+      <p style="font-size:0.82rem;color:var(--muted);margin-top:0.8rem;line-height:1.5">
+        Parser generators (ANTLR, yacc/bison, pegjs) allowed — but you must be able to explain them in the oral defense.
+      </p>
+    </div>
+
+    <div>
+      <h3 style="color:var(--accent3);margin-bottom:1rem">Error Handling — Required</h3>
+      <div class="checklist">
+        <div class="check-item">
+          <div class="check-box">✓</div>
+          <div class="check-text">Useful error message + <strong>line number</strong> for malformed programs</div>
+        </div>
+        <div class="check-item">
+          <div class="check-box">✓</div>
+          <div class="check-text">Runtime error: <strong>division by zero</strong></div>
+        </div>
+        <div class="check-item">
+          <div class="check-box">✓</div>
+          <div class="check-text">Runtime error: <strong>index out of range</strong> (if applicable)</div>
+        </div>
+        <div class="check-item">
+          <div class="check-box">✓</div>
+          <div class="check-text">At least <strong>1 domain-specific runtime error</strong></div>
+        </div>
+      </div>
+
+      <h3 style="color:var(--accent3);margin-bottom:1rem;margin-top:2rem">D3 Test Programs — Required Coverage</h3>
+      <div class="checklist">
+        <div class="check-item">
+          <div class="check-box">✓</div>
+          <div class="check-text">Every <strong>control structure</strong> exercised</div>
+        </div>
+        <div class="check-item">
+          <div class="check-box">✓</div>
+          <div class="check-text">Your <strong>structured type</strong> used</div>
+        </div>
+        <div class="check-item">
+          <div class="check-box">✓</div>
+          <div class="check-text"><strong>Function definition + call</strong> with params</div>
+        </div>
+        <div class="check-item">
+          <div class="check-box">✓</div>
+          <div class="check-text">Your <strong>domain-specific construct</strong> demonstrated</div>
+        </div>
+        <div class="check-item">
+          <div class="check-box">✓</div>
+          <div class="check-text">1 program triggering a <strong>type error</strong> (caught at compile/check time)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h3 style="margin-top:2.5rem;margin-bottom:1rem">Sample EBNF (ShapeScript excerpt — do NOT copy this design)</h3>
+  <div class="code-block">
+<span class="cm">/* Expression grammar showing operator precedence hierarchy */</span>
+&lt;expression&gt;  ::= &lt;term&gt; { (<span class="kw">"+"</span> | <span class="kw">"-"</span>) &lt;term&gt; }
+&lt;term&gt;        ::= &lt;factor&gt; { (<span class="kw">"*"</span> | <span class="kw">"/"</span>) &lt;factor&gt; }
+&lt;factor&gt;      ::= &lt;ident&gt; | &lt;number&gt; | <span class="kw">"("</span> &lt;expression&gt; <span class="kw">")"</span>
+
+<span class="cm">/* Operational semantics for repeat (big-step form) */</span>
+&lt;n, S&gt; -&gt; n'   &lt;B, S&gt; -&gt; S1  ...  &lt;B, S_{n'<span class="num">-1</span>}&gt; -&gt; S_{n'}
+-------------------------------------------------------
+&lt;<span class="kw">repeat</span> n <span class="kw">times</span> B, S&gt; -&gt; S_{n'}
+<span class="cm">/* Note: n is evaluated ONCE — design decision that must be justified */</span>
+  </div>
+</section>
+
+<!-- RULES -->
+<section id="rules">
+  <div class="section-tag">// 06 — Rules, Permissions &amp; Prohibitions</div>
+  <h2>What You Can, Must, and Cannot Do</h2>
+
+  <div class="rules-grid">
+    <div class="rule-group">
+      <h3>
+        <div class="rule-icon icon-red">🚫</div>
+        FORBIDDEN — Academic Violations
+      </h3>
+      <ul class="rule-list forbidden">
+        <li>Copying another student's design, code, or rationale (plagiarism)</li>
+        <li>Two suspiciously similar submissions — both will be investigated</li>
+        <li>Pasting AI-generated text into Design Spec/rationale sections without quoting and discussing it</li>
+        <li>Fabricating or backfilling AI Journal entries — treated as academic dishonesty</li>
+        <li>Submitting AI-generated rationale you cannot defend in the oral viva</li>
+        <li>Submitting a dated journal with all entries in the final week (gets zero)</li>
+        <li>Choosing the same domain as another student (first-come basis)</li>
+      </ul>
+    </div>
+
+    <div class="rule-group">
+      <h3>
+        <div class="rule-icon icon-green">✅</div>
+        PERMITTED — Encouraged Actions
+      </h3>
+      <ul class="rule-list allowed">
+        <li>Using AI assistants (Claude, ChatGPT, Copilot, Gemini) — it's required</li>
+        <li>AI-assisted code generation — but you must explain every line</li>
+        <li>Using parser generators (ANTLR, yacc/bison, pegjs)</li>
+        <li>Revising D1 spec — as long as final D1 matches final D2</li>
+        <li>Quoting AI responses in your journal (with discussion)</li>
+        <li>Asking instructor for clarification at any point</li>
+        <li>Making your language deliberately different from ShapeScript example</li>
+      </ul>
+    </div>
+
+    <div class="rule-group">
+      <h3>
+        <div class="rule-icon icon-yellow">⚡</div>
+        MANDATORY — Required Actions
+      </h3>
+      <ul class="rule-list mandatory">
+        <li>Use AI assistants and document use in D4</li>
+        <li>Complete all 3 AI experiments: E1 (EBNF), E2 (type equivalence), E3 (type checker)</li>
+        <li>Get domain approved by instructor by 10 April 2026</li>
+        <li>AI journal entries must span multiple weeks with real dates</li>
+        <li>Include conversation share links for every AI journal entry</li>
+        <li>Rationale sections (D1 §4.8, D5) must be in your own voice</li>
+        <li>Use Sebesta's specific terminology in all justifications</li>
+        <li>D1 spec must differ from ShapeScript in at least 3 design choices</li>
+        <li>Document at least 3 cases where AI was wrong or suboptimal</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout" style="margin-top:2rem">
+    ℹ️ <strong>The oral defense is the ultimate check.</strong> Every part of your submission is graded in context of what you can explain out loud. Strong oral can recover written grade. Weak oral on a section will reduce that artifact's grade — regardless of how polished it looks.
+  </div>
+</section>
+
+<!-- AI JOURNAL -->
+<section id="journal">
+  <div class="section-tag">// 07 — AI Usage Journal</div>
+  <h2>The AI Usage Journal (D4)</h2>
+
+  <p style="color:var(--muted);margin-bottom:2rem;max-width:700px;line-height:1.7">
+    10–20 entries, 6–15 pages, spanning the whole project. Each entry must have a real date and a share link. Dates must be spread across working weeks — not all at the end.
+  </p>
+
+  <div class="two-col" style="margin-bottom:2.5rem">
+    <div>
+      <h3 style="margin-bottom:1.2rem">3 Mandatory Experiments</h3>
+
+      <div style="display:flex;flex-direction:column;gap:1rem">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.3rem">
+          <div class="badge badge-red" style="margin-bottom:0.6rem">E1 — EBNF Grammar</div>
+          <p style="font-size:0.87rem;color:var(--muted);line-height:1.6">
+            Ask AI to generate EBNF from a one-paragraph description. Compare with yours. What did it get wrong? Does it handle operator precedence correctly?
+          </p>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.3rem">
+          <div class="badge badge-yellow" style="margin-bottom:0.6rem">E2 — Type Equivalence</div>
+          <p style="font-size:0.87rem;color:var(--muted);line-height:1.6">
+            Ask AI to explain name equivalence vs structural equivalence for your record type. Does it match Sebesta §6.14? Does its example actually run under the rule it described?
+          </p>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.3rem">
+          <div class="badge badge-green" style="margin-bottom:0.6rem">E3 — Type Checker Code</div>
+          <p style="font-size:0.87rem;color:var(--muted);line-height:1.6">
+            Ask AI to implement your type checker (or a non-trivial portion). Run on 3 test inputs you know the answer to. Report bugs, how you fixed them.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <h3 style="margin-bottom:1.2rem">Grading Criteria for Journal</h3>
+      <div style="display:flex;flex-direction:column;gap:0.8rem">
+        <div style="background:var(--surface);border:1px solid rgba(106,255,212,0.2);border-radius:10px;padding:1rem 1.2rem">
+          <div style="font-size:0.75rem;font-weight:700;color:var(--accent3);margin-bottom:0.4rem">FULL CREDIT</div>
+          <p style="font-size:0.85rem;color:var(--muted);line-height:1.5">Why the answer was correct, what could have gone wrong, how you verified it. Critical evaluation present.</p>
+        </div>
+        <div style="background:var(--surface);border:1px solid rgba(255,217,106,0.2);border-radius:10px;padding:1rem 1.2rem">
+          <div style="font-size:0.75rem;font-weight:700;color:var(--accent4);margin-bottom:0.4rem">MINIMUM CREDIT</div>
+          <p style="font-size:0.85rem;color:var(--muted);line-height:1.5">"AI gave correct answer, I used it" — no reflection or verification discussed.</p>
+        </div>
+        <div style="background:var(--surface);border:1px solid rgba(255,106,106,0.2);border-radius:10px;padding:1rem 1.2rem">
+          <div style="font-size:0.75rem;font-weight:700;color:var(--accent2);margin-bottom:0.4rem">ZERO / ACADEMIC DISHONESTY</div>
+          <p style="font-size:0.85rem;color:var(--muted);line-height:1.5">Fabricated entries, copy-pasted-for-show entries, all entries dated in final week, no share links.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h3 style="margin-bottom:1.2rem">Entry Template (Required Format)</h3>
+  <div class="journal-card">
+    <div class="journal-header">
+      <div class="journal-dot" style="background:#ff5f57"></div>
+      <div class="journal-dot" style="background:#ffbd2e"></div>
+      <div class="journal-dot" style="background:#28c840"></div>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:var(--muted);margin-left:0.5rem">AI Usage Journal — Entry Template</span>
+    </div>
+    <div class="journal-body">
+      <div class="field-row">
+        <div class="field-key">Entry #</div>
+        <div class="field-val">e.g., 7 of 14</div>
+      </div>
+      <div class="field-row">
+        <div class="field-key">Date</div>
+        <div class="field-val highlight">YYYY-MM-DD — must be a real date during project work</div>
+      </div>
+      <div class="field-row">
+        <div class="field-key">Phase</div>
+        <div class="field-val">Design / Lexer / Parser / Type checker / Interpreter / Testing / Writing</div>
+      </div>
+      <div class="field-row">
+        <div class="field-key">AI Tool</div>
+        <div class="field-val">e.g., <code>Claude Opus 4.7</code> / ChatGPT / Copilot / Gemini (+ version)</div>
+      </div>
+      <div class="field-row">
+        <div class="field-key">Goal</div>
+        <div class="field-val">One sentence — what you were trying to achieve</div>
+      </div>
+      <div class="field-row">
+        <div class="field-key">Prompt</div>
+        <div class="field-val highlight">Verbatim. If iterated, show final prompt + one-line summary of what changed.</div>
+      </div>
+      <div class="field-row">
+        <div class="field-key">Response</div>
+        <div class="field-val">Verbatim code/text or tight summary with direct quotes of important lines</div>
+      </div>
+      <div class="field-row">
+        <div class="field-key">Accepted</div>
+        <div class="field-val">What you kept and why</div>
+      </div>
+      <div class="field-row">
+        <div class="field-key">Rejected</div>
+        <div class="field-val highlight">What you threw away or changed and why — be specific: bug, wrong abstraction, hallucinated API, etc.</div>
+      </div>
+      <div class="field-row">
+        <div class="field-key">Errors Caught</div>
+        <div class="field-val highlight">Any mistakes the AI made. How did you detect them? What would have happened if you hadn't?</div>
+      </div>
+      <div class="field-row">
+        <div class="field-key">Reflection</div>
+        <div class="field-val">2–3 sentences: what you learned about the problem or about using AI</div>
+      </div>
+      <div class="field-row">
+        <div class="field-key">Conversation Link</div>
+        <div class="field-val highlight">Share URL from the AI platform — do not delete your sessions!</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- RUBRIC -->
+<section id="rubric">
+  <div class="section-tag">// 08 — How You're Graded</div>
+  <h2>Grading Rubric</h2>
+
+  <div style="overflow-x:auto">
+    <table class="rubric-table">
+      <thead>
+        <tr>
+          <th>Dimension</th>
+          <th class="grade-a">A — Excellent</th>
+          <th class="grade-b">B — Good</th>
+          <th class="grade-c">C — Adequate</th>
+          <th class="grade-d">D — Weak / Not Submitted</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Correctness<br><small style="font-weight:400;color:var(--muted)">(D1 + D2)</small></td>
+          <td>All behaviors work; zero contradictions between spec and implementation</td>
+          <td>Minor bugs; ≤2 acknowledged contradictions</td>
+          <td>Core features work; edge cases fail; some inconsistencies</td>
+          <td>Spec and implementation diverge significantly; major features missing</td>
+        </tr>
+        <tr>
+          <td>Design Justification<br><small style="font-weight:400;color:var(--muted)">(D1 §4.8)</small></td>
+          <td>Every major decision justified with Sebesta terminology + named trade-off</td>
+          <td>Most decisions justified; terminology mostly correct</td>
+          <td>Generic justifications; terminology used loosely</td>
+          <td>Decisions stated without justification; or justifications are boilerplate</td>
+        </tr>
+        <tr>
+          <td>Use of Sebesta Framework<br><small style="font-weight:400;color:var(--muted)">(All artifacts)</small></td>
+          <td>Accurate EBNF, semantics style, type-system and binding terminology throughout</td>
+          <td>Accurate with 1–2 misapplications</td>
+          <td>Terminology present but shallowly applied</td>
+          <td>Terminology misused or absent</td>
+        </tr>
+        <tr>
+          <td>Originality<br><small style="font-weight:400;color:var(--muted)">(Domain + DSL)</small></td>
+          <td>Clearly distinct DSL with a genuine domain-specific construct</td>
+          <td>Distinct DSL; domain construct is present but thin</td>
+          <td>DSL is a lightly themed reskin of a generic language</td>
+          <td>Indistinguishable from a generic textbook toy language</td>
+        </tr>
+        <tr>
+          <td>Code Quality<br><small style="font-weight:400;color:var(--muted)">(D2)</small></td>
+          <td>Clean architecture; lexer, parser, type checker, evaluator clearly separated</td>
+          <td>Readable code with working separation of concerns</td>
+          <td>Code works but is tangled; separation unclear</td>
+          <td>Opaque, undocumented, or doesn't match spec</td>
+        </tr>
+        <tr>
+          <td>Oral Defense<br><small style="font-weight:400;color:var(--muted)">(OD — Substantial weight)</small></td>
+          <td>Confidently explains every choice including alternatives not taken</td>
+          <td>Explains most choices; recovers from follow-ups with light prompting</td>
+          <td>Explains surface of choices; cannot discuss alternatives</td>
+          <td>Cannot explain fundamental aspects of own submission</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout warning" style="margin-top:1.5rem">
+    ⚠ <strong>Oral defense grade is independent</strong> and carries substantial weight. Instructor can reduce artifact grades if you cannot explain a section. Conversely, strong oral can recover unclear written work.
+  </div>
+</section>
+
+<!-- STRATEGY -->
+<section id="strategy">
+  <div class="section-tag">// 09 — How to Succeed</div>
+  <h2>Recommended Strategy</h2>
+
+  <div class="strategy-grid">
+    <div class="strategy-card">
+      <div class="strategy-num">01</div>
+      <h3>Pick Your Domain NOW</h3>
+      <p>Domain approval closes 10 April. Choose something you find genuinely interesting — you'll be explaining every design decision out loud. Bored students make generic decisions. Generic decisions fail the originality criterion.</p>
+    </div>
+
+    <div class="strategy-card">
+      <div class="strategy-num">02</div>
+      <h3>Design First, Code Second</h3>
+      <p>Spend real time on D1. A solid design specification makes implementation straightforward. If you start coding before your grammar is settled, you'll rewrite your parser three times. D1 must match D2 — so nail D1 first.</p>
+    </div>
+
+    <div class="strategy-card">
+      <div class="strategy-num">03</div>
+      <h3>Keep the AI Journal Live</h3>
+      <p>Start logging AI sessions from day one — even design conversations. Dated entries spread across the project are credible; backdated entries are not. Save every share link immediately; AI sessions can expire.</p>
+    </div>
+
+    <div class="strategy-card">
+      <div class="strategy-num">04</div>
+      <h3>Use AI as a Sparring Partner</h3>
+      <p>Don't just ask AI "write my parser." Ask "what's wrong with this grammar?" Ask it to find edge cases. Use it to explain Sebesta concepts, then verify against the book. This gives you journal content and real understanding.</p>
+    </div>
+
+    <div class="strategy-card">
+      <div class="strategy-num">05</div>
+      <h3>Prepare for the Viva</h3>
+      <p>For every design decision in your spec, have answers ready: "Why this way? What would break if you did it the other way? What alternative did you consider?" Practice out loud. The questions will use Sebesta's exact terminology.</p>
+    </div>
+
+    <div class="strategy-card">
+      <div class="strategy-num">06</div>
+      <h3>Make 3 Intentionally Wrong Programs</h3>
+      <p>Write your 5 malformed programs intentionally, covering parser errors (syntax), type checker errors (type mismatch), and runtime errors. This forces you to understand every failure mode of your own language — oral gold.</p>
+    </div>
+  </div>
+
+  <div class="callout tip" style="margin-top:2rem">
+    💡 <strong>Key insight from the handout:</strong> "If you treat it as an AI-copy-paste exercise, you will struggle in the oral defense. If you treat it as what it is — a chance to make real programming-language design decisions and defend them — you will come out of it understanding every chapter of the book in a way no exam can teach."
+  </div>
+
+  <h3 style="margin-top:2.5rem;margin-bottom:1.2rem">Questions to Ask Yourself Before Submission</h3>
+  <div class="checklist">
+    <div class="check-item"><div class="check-box">?</div><div class="check-text">Can you explain the difference between <strong>name equivalence and structural equivalence</strong> using your own language as an example?</div></div>
+    <div class="check-item"><div class="check-box">?</div><div class="check-text">Can you trace through your <strong>scoping rules</strong> for a nested function call by hand?</div></div>
+    <div class="check-item"><div class="check-box">?</div><div class="check-text">Can you explain why your language uses <strong>static vs dynamic scoping</strong> and what would break if you switched?</div></div>
+    <div class="check-item"><div class="check-box">?</div><div class="check-text">Can you draw the <strong>AST</strong> for any expression in your language by hand?</div></div>
+    <div class="check-item"><div class="check-box">?</div><div class="check-text">Can you write a small program <strong>on the fly</strong> during the viva in your own DSL?</div></div>
+    <div class="check-item"><div class="check-box">?</div><div class="check-text">Does your D2 implementation match <strong>every claim in D1</strong>? Especially scoping, types, and operator precedence?</div></div>
+    <div class="check-item"><div class="check-box">?</div><div class="check-text">Are your AI journal entry dates <strong>spread across multiple weeks</strong> with real share links?</div></div>
+  </div>
+</section>
+
+<footer>
+  CSE 341 · Concepts of Programming Languages · Gebze Technical University · Spring 2026<br>
+  Based on Sebesta's <em>Concepts of Programming Languages</em>, 12th ed. · Presentation auto-generated for study reference.
+</footer>
+
+</body>
+</html>
