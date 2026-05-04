@@ -1,22 +1,22 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // sample_1.ayar
-// DESCRIPTION : Binary-class flower classification using KNN and DecisionTree.
-// FEATURES    : dataset decl, split, 2 model types (int/string/bool fields),
-//               experiment with train + evaluate + collect + analyze +
-//               compare + exclude + select, top-level evaluate (bracket form),
-//               and a report with both field types.
+// DESCRIPTION : Iris flower classification using KNN and DecisionTree.
+// COVERS      : dataset decl, split, 2 model types (int/string/bool fields),
+//               full experiment (all 7 statement types), dotted eval_target
+//               (identifier.identifier form, no brackets), report.
+//
+// CRITICAL SYNTAX RULES (updated parser / D1 spec):
+//   analyze fields: each ends with ";" only — NO comma between fields
+//   eval_target: dotted form   evaluate exp_name.best on dataset.role;
 // ─────────────────────────────────────────────────────────────────────────────
 
-// ── 1. Load dataset ──────────────────────────────────────────────────────────
 dataset iris = load("data/iris.csv");
 
-// ── 2. Split into three partitions ───────────────────────────────────────────
 split iris into
     train(0.70),
     validation(0.15),
     test(0.15);
 
-// ── 3. Model declarations ────────────────────────────────────────────────────
 model KNN knn_clf
 {
     n_neighbors = 7,
@@ -28,11 +28,9 @@ model DecisionTree dt_clf
 {
     max_depth = 8,
     criterion = "gini",
-    min_samples_split = 4,
-    splitter = "best"
+    min_samples_split = 4
 }
 
-// ── 4. Experiment ─────────────────────────────────────────────────────────────
 experiment iris_exp
 {
     train knn_clf on iris.train;
@@ -45,7 +43,7 @@ experiment iris_exp
 
     analyze overfitting
     {
-        threshold = 0.08;,
+        threshold = 0.08;
         underfit_max_acc = 0.55;
     }
 
@@ -56,10 +54,9 @@ experiment iris_exp
     select best;
 }
 
-// ── 5. Final evaluation on held-out test set (bracket target) ─────────────────
-evaluate [iris_exp.best] on iris.test;
+// dotted eval_target: identifier.identifier (no brackets) – NEW form
+evaluate iris_exp.best on iris.test;
 
-// ── 6. Report ─────────────────────────────────────────────────────────────────
 report iris_report
 {
     metrics = [accuracy, precision, recall, f1],

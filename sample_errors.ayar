@@ -1,0 +1,40 @@
+// sample_errors.ayar  (D1 spec aligned)
+// ─────────────────────────────────────────────────────────────────
+// Intentional errors. Uncomment ONE block at a time.
+// RUN: python3 run_tests.py --file sample_errors.ayar
+// ─────────────────────────────────────────────────────────────────
+
+// ── LAYOUT ERROR (active): '{' on same line as header ────────────
+// Expected: LayoutError
+report final {
+    metrics = [accuracy],
+    show = overfitting_analysis
+}
+
+// ── OLD ANALYZE STYLE with comma (comment layout error first) ────
+// Expected: ParseError – RBRACE expected but COMMA found
+// dataset d = load("x.csv");
+// model KNN k
+// {
+//     k = 3
+// }
+// experiment e
+// {
+//     train k on d.train;
+//     collect metrics [accuracy];
+//     analyze overfitting
+//     {
+//         threshold = 0.10;,
+//         underfit_max_acc = 0.60;
+//     }
+//     compare by accuracy higher_is_better;
+//     select best;
+// }
+
+// ── GRAMMAR ERROR – missing ";" (comment others first) ───────────
+// Expected: ParseError – SEMICOLON
+// dataset iris = load("iris.csv")
+// model KNN k
+// {
+//     k = 3
+// }

@@ -1,14 +1,15 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // invalid_3.ayar
-// DELIBERATE ERROR : 'verify' is not a valid split role.
-//                    Valid roles are: train, validation, test.
-// EXPECTED ERROR   : ParseError – expected a split role ('train',
-//                    'validation', 'test'), received IDENTIFIER 'verify'
+// DELIBERATE ERROR : "RandomForest" is not a valid model type in ayar.
+//   Valid types: KNN, DecisionTree, SVM, NaiveBayes, LogisticRegression.
+// EXPECTED ERROR   : ParseError – expected a model type (...),
+//                    received IDENTIFIER 'RandomForest'
 // ─────────────────────────────────────────────────────────────────────────────
 
-dataset wine = load("data/wine.csv");
+dataset bank = load("data/bank.csv");
 
-split wine into
-    train(0.60),
-    verify(0.20),    // <-- 'verify' is not a recognised split role
-    test(0.20);
+model RandomForest rf_model
+{
+    n_estimators = 100,
+    max_depth = 10
+}

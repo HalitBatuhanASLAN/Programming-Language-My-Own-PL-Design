@@ -4,55 +4,41 @@ run_tests.py  –  Test runner for the ayar DSL lexer + parser
 ═════════════════════════════════════════════════════════════════════════════
 CSE341 – Concepts of Programming Languages  |  Deliverable D3
 
-HOW TO USE
-──────────
-  python3 run_tests.py                        full built-in test suite
-  python3 run_tests.py --file  my.ayar        parse a .ayar file, print AST
-  python3 run_tests.py --tokens my.ayar       show the token stream only
-  python3 run_tests.py --expr "3+4*2"         parse & print a single expression
+USAGE
+─────
+  python3 run_tests.py                   full built-in test suite
+  python3 run_tests.py --file  my.ayar   parse a .ayar file, print AST
+  python3 run_tests.py --tokens my.ayar  show the raw token stream only
+  python3 run_tests.py --expr "3+4*2"    parse a single expression
 
-DESIGN OVERVIEW (for exam purposes)
-────────────────────────────────────
-  1. We import the student's own Lexer (ayar_lexer.py) and Parser
-     (ayar_parser.py) without modifying either file.
+WHAT CHANGED FROM THE PREVIOUS PARSER (exam-ready explanation)
+───────────────────────────────────────────────────────────────
+  1. analyze overfitting fields  – NO comma between them.
+     Each field is self-terminating with ";", so two fields look like:
+         analyze overfitting
+         {
+             threshold = 0.10;
+             underfit_max_acc = 0.70;
+         }
+     Using the old ";," style now causes a ParseError because the parser
+     sees the "}" but finds a COMMA instead after the first field's ";".
 
-  2. adapt_tokens(tokens)  –  an adapter / interceptor function.
-     If in a future revision the lexer changes a token name (e.g. renames
-     "OP_ASSIGN" to "ASSIGN" or "STRING_LITERAL" to "STRING_LIT"), this
-     single function is the ONLY place that needs editing.  It loops through
-     the token list and rewrites type names before handing them to the Parser.
-     Currently the lexer and parser already agree on all names, so the
-     REMAP dict below is empty — but the function is included so the
-     architecture is clear and easy to extend.
+  2. eval_target (top-level evaluate) – three forms now accepted:
+       a) plain identifier        evaluate my_model on d.test;
+       b) dotted (NEW)            evaluate exp_name.best on d.test;
+       c) bracket                 evaluate [exp_name.best] on d.test;
+     The dotted form is new. The bracket form still works.
 
-  3. run_valid_tests()   iterates VALID_TESTS, calls lex → adapt → parse,
-     and prints the AST with Parser.print_tree().  Any unexpected error
-     counts as a test failure.
+TOKEN ADAPTER (adapt_tokens)
+─────────────────────────────
+  The lexer and parser agree on all token-type names, so REMAP is empty.
+  The function is kept as architecture: if a future name mismatch occurs,
+  add  "old_name": "new_name"  to REMAP and nothing else needs changing.
 
-  4. run_invalid_tests() iterates INVALID_TESTS, calls lex → adapt → parse,
-     and expects a LexicalError, LayoutError, or ParseError to be raised.
-     If no exception is raised the test fails (the parser should have
-     rejected the bad input).
-
-  5. A simple counter tracks passed / failed.  No external framework is
-     used — just plain Python try/except blocks and print() calls.
-
-TOKEN NAME MISMATCH NOTES
-──────────────────────────
-  As of this writing, the lexer and parser agree on every token type name,
-  so the REMAP table is empty.  The adapter is here to show WHERE fixes
-  would go.  For example, if the lexer were changed to emit "ASSIGN" instead
-  of "OP_ASSIGN", you would add:
-      "ASSIGN": "OP_ASSIGN"
-  to the REMAP dict below — nothing else in the codebase would need to change.
-
-LAYOUT RULE (from the grammar spec)
-─────────────────────────────────────
-  Every '{' and '}' must be on its own source line.
-  LEGAL:    model KNN k       ILLEGAL:  model KNN k {
-            {                               n = 5
-                n = 5                   }
-            }
+LAYOUT RULE
+────────────
+  Every "{" and "}" must be on its own source line. Violations raise
+  LayoutError before grammar parsing even begins.
 """
 
 import sys
@@ -60,21 +46,14 @@ import os
 import argparse
 import textwrap
 
-# ── make sure ayar_lexer.py / ayar_parser.py are importable ──────────────────
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from ayar_lexer  import Lexer, LexicalError
 from ayar_parser import Parser, ParseError, LayoutError
 
-# ─────────────────────────────────────────────────────────────────────────────
-# ANSI colour helpers  (gracefully disabled when output is not a terminal)
-# ─────────────────────────────────────────────────────────────────────────────
-
+# ── ANSI colour helpers ──────────────────────────────────────────────────────
 _USE_COLOR = sys.stdout.isatty()
-
-def _c(code, text):
-    return f"\033[{code}m{text}\033[0m" if _USE_COLOR else text
-
+def _c(code, text): return f"\033[{code}m{text}\033[0m" if _USE_COLOR else text
 GREEN  = lambda t: _c("32;1", t)
 RED    = lambda t: _c("31;1", t)
 YELLOW = lambda t: _c("33;1", t)
@@ -83,45 +62,19 @@ BOLD   = lambda t: _c("1",    t)
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-# TOKEN ADAPTER / INTERCEPTOR
-# ─────────────────────────────────────────────────────────────────────────────
-# If the lexer and parser ever disagree on a token-type name, add the mapping
-# here.  The function mutates the token list IN PLACE (no copy needed because
-# Token is a mutable dataclass).
-#
-# REMAP maps  "lexer produces"  →  "parser expects".
+# TOKEN ADAPTER
 # ═════════════════════════════════════════════════════════════════════════════
 
 REMAP: dict = {
-    # Example (not currently needed, shown for clarity):
-    #   "ASSIGN"       : "OP_ASSIGN",     # if lexer renamed the assign token
-    #   "STRING_LIT"   : "STRING_LITERAL", # if lexer shortened the string type
-    #   "INT_LIT"      : "INT_LITERAL",    # if lexer shortened the int type
+    # Add entries here if the lexer renames a token type, e.g.:
+    #   "STRING_LIT": "STRING_LITERAL"
 }
-
 
 def adapt_tokens(tokens: list) -> list:
     """
-    Adapter / interceptor that fixes token-type name mismatches between the
-    lexer and the parser.
-
-    Walks the entire token list exactly once (O(n)) and replaces any type
-    name that appears in the REMAP dict.  Returns the same list object
-    (the mutation is in-place for efficiency, but callers may also chain:
-         ast = Parser(adapt_tokens(tokens)).parse()
-    ).
-
-    The adapter is intentionally separate from both the Lexer and the Parser
-    so that neither file needs to be touched when a naming inconsistency is
-    discovered.
-
-    Parameters
-    ----------
-    tokens : list[Token]   – output of Lexer.tokenize()
-
-    Returns
-    -------
-    list[Token]            – same list, with type names corrected
+    Interceptor that fixes token-type name mismatches between lexer and parser.
+    Walks the token list once (O(n)), rewrites any type found in REMAP.
+    Currently a no-op (REMAP is empty) but kept as future-proof architecture.
     """
     for tok in tokens:
         if tok.type in REMAP:
@@ -130,42 +83,34 @@ def adapt_tokens(tokens: list) -> list:
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-# CORE PIPELINE  (lex → adapt → parse)
+# CORE PIPELINE
 # ═════════════════════════════════════════════════════════════════════════════
 
 def lex_and_parse(source: str):
-    """Tokenise, adapt, and parse a source string.  Returns (tokens, ast)."""
+    """Tokenise → adapt → parse.  Returns (tokens, ast)."""
     tokens = Lexer(source).tokenize()
-    tokens = adapt_tokens(tokens)         # ← adapter runs here
+    tokens = adapt_tokens(tokens)
     ast    = Parser(tokens).parse()
     return tokens, ast
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-# GENERIC TEST HELPERS
+# TEST HELPERS
 # ═════════════════════════════════════════════════════════════════════════════
 
 def run_valid_test(label: str, source: str) -> bool:
-    """
-    Test that a source string parses without errors.
-
-    On success  – prints the AST using Parser.print_tree().
-    On failure  – prints the unexpected error message.
-
-    Returns True if the test passed, False otherwise.
-    """
-    print(BOLD(f"\n{'─' * 64}"))
+    """Parse source; PASS if no error, FAIL if any error is raised."""
+    print(BOLD(f"\n{'─'*64}"))
     print(BOLD(f"[VALID] {label}"))
-    print(f"{'─' * 64}")
+    print(f"{'─'*64}")
     try:
         _, ast = lex_and_parse(source)
-        # print_tree uses Parser.dump_ast() which calls node.dump(indent=0)
         for line in Parser.dump_ast(ast).splitlines():
             print("  " + line)
         print(GREEN("  ✓ PASSED"))
         return True
     except (LexicalError, LayoutError, ParseError) as err:
-        print(RED("  ✗ FAILED  (unexpected error was raised)"))
+        print(RED("  ✗ FAILED  (unexpected error raised)"))
         for line in str(err).splitlines():
             print(RED("  " + line))
         return False
@@ -173,29 +118,20 @@ def run_valid_test(label: str, source: str) -> bool:
 
 def run_invalid_test(label: str, source: str, expected_fragment: str = "") -> bool:
     """
-    Test that a source string is REJECTED by the lexer/parser.
-
-    The test passes if LexicalError, LayoutError, or ParseError is raised.
-    If expected_fragment is non-empty, the error message must contain it.
-
-    On success  – prints the caught error message (so you can see line/col).
-    On failure  – prints a message explaining why the test failed.
-
-    Returns True if the test passed, False otherwise.
+    Parse source; PASS if LexicalError / LayoutError / ParseError is raised.
+    If expected_fragment is given, that string must appear in the error message.
     """
-    print(BOLD(f"\n{'─' * 64}"))
+    print(BOLD(f"\n{'─'*64}"))
     print(BOLD(f"[INVALID] {label}"))
-    print(f"{'─' * 64}")
+    print(f"{'─'*64}")
     try:
         lex_and_parse(source)
-        # If we get here the parser accepted input it should have rejected.
-        print(RED("  ✗ FAILED  (no error raised — parser should have rejected this)"))
+        print(RED("  ✗ FAILED  (no error raised — parser accepted invalid input)"))
         return False
     except (LexicalError, LayoutError, ParseError) as err:
         msg = str(err)
         if expected_fragment and expected_fragment not in msg:
-            print(YELLOW("  ⚠ PARTIAL – correct error type raised, but expected "
-                         "fragment NOT found in message"))
+            print(YELLOW("  ⚠ PARTIAL – error raised but expected fragment missing"))
             print(YELLOW(f"    wanted : {expected_fragment!r}"))
             print(YELLOW(f"    got    : {msg[:300]}"))
             return False
@@ -206,16 +142,22 @@ def run_invalid_test(label: str, source: str, expected_fragment: str = "") -> bo
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-# VALID TEST CASES  (sample programs that MUST parse successfully)
+# VALID TEST CASES
 # ─────────────────────────────────────────────────────────────────────────────
-# Each entry is a (label, source) tuple.
-# The three sample .ayar files are also tested via run_file() below; these
-# inline tests cover every individual grammar feature in isolation.
+# All analyze blocks use the NEW style: fields separated by nothing,
+# each ending with ";" only.
+# eval_target tests cover all three accepted forms.
 # ═════════════════════════════════════════════════════════════════════════════
+
+def _sample_file(name):
+    """Load a .ayar file from the same directory as this script, or '' if missing."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), name)
+    return open(path).read() if os.path.exists(path) else ""
+
 
 VALID_TESTS = [
 
-    # ── V1 : dataset declaration + split ─────────────────────────────────────
+    # ── V1 : dataset declaration + three-way split ───────────────────────────
     ("V1 – dataset decl and three-way split",
      textwrap.dedent("""\
         dataset iris = load("data/iris.csv");
@@ -250,7 +192,7 @@ VALID_TESTS = [
         }
      """)),
 
-    # ── V3 : field value types – int, float, string, bool ────────────────────
+    # ── V3 : all four field value types ──────────────────────────────────────
     ("V3 – field values: int, float, string, bool",
      textwrap.dedent("""\
         model SVM s
@@ -263,105 +205,30 @@ VALID_TESTS = [
         }
      """)),
 
-    # ── V4 : all seven experiment statement types ─────────────────────────────
-    ("V4 – all seven experiment statement types",
-     textwrap.dedent("""\
-        dataset d = load("bank.csv");
-        model KNN k
-        {
-            k = 7
-        }
-        experiment full_exp
-        {
-            train    k on d.train;
-            evaluate k on d.validation;
-            collect metrics [accuracy, precision, recall, f1];
-            analyze overfitting
-            {
-                threshold = 0.10;,
-                underfit_max_acc = 0.55;
-            }
-            compare by f1 higher_is_better;
-            exclude if overfit or underfit;
-            select best;
-        }
-     """)),
-
-    # ── V5 : top-level evaluate – bracket target ──────────────────────────────
-    ("V5 – top-level evaluate with bracket target [exp.best]",
-     textwrap.dedent("""\
-        dataset d = load("x.csv");
-        evaluate [main_exp.best] on d.test;
-     """)),
-
-    # ── V6 : top-level evaluate – simple identifier target ────────────────────
-    ("V6 – top-level evaluate with simple identifier target",
+    # ── V4 : analyze with BOTH fields, no comma (NEW style) ──────────────────
+    ("V4 – analyze overfitting: both fields, no comma between them",
      textwrap.dedent("""\
         dataset d = load("x.csv");
         model KNN k
         {
-            k = 1
-        }
-        evaluate k on d.test;
-     """)),
-
-    # ── V7 : report – overfitting_analysis show value ─────────────────────────
-    ("V7 – report with show = overfitting_analysis",
-     textwrap.dedent("""\
-        report summary
-        {
-            metrics = [accuracy, f1],
-            show    = overfitting_analysis
-        }
-     """)),
-
-    # ── V8 : report – string literal show value ───────────────────────────────
-    ("V8 – report with show = \"confusion_matrix\" (string literal)",
-     textwrap.dedent("""\
-        report summary
-        {
-            metrics = [recall, precision],
-            show    = "confusion_matrix"
-        }
-     """)),
-
-    # ── V9 : compare direction lower_is_better ────────────────────────────────
-    ("V9 – compare by metric lower_is_better",
-     textwrap.dedent("""\
-        dataset d = load("x.csv");
-        model SVM s
-        {
-            C = 1
-        }
-        experiment e
-        {
-            train s on d.train;
-            collect metrics [recall];
-            compare by recall lower_is_better;
-            select best;
-        }
-     """)),
-
-    # ── V10 : exclude with single condition ──────────────────────────────────
-    ("V10 – exclude with single condition (exclude if overfit)",
-     textwrap.dedent("""\
-        dataset d = load("x.csv");
-        model KNN k
-        {
-            k = 3
+            k = 5
         }
         experiment e
         {
             train k on d.train;
             collect metrics [accuracy];
+            analyze overfitting
+            {
+                threshold = 0.10;
+                underfit_max_acc = 0.70;
+            }
             compare by accuracy higher_is_better;
-            exclude if overfit;
             select best;
         }
      """)),
 
-    # ── V11 : analyze with single field ──────────────────────────────────────
-    ("V11 – analyze overfitting with only the threshold field",
+    # ── V5 : analyze with only threshold field ────────────────────────────────
+    ("V5 – analyze overfitting: threshold field only",
      textwrap.dedent("""\
         dataset d = load("x.csv");
         model KNN k
@@ -381,8 +248,113 @@ VALID_TESTS = [
         }
      """)),
 
-    # ── V12 : all four metric literals in collect ─────────────────────────────
-    ("V12 – collect metrics [accuracy, precision, recall, f1]",
+    # ── V6 : analyze with only underfit_max_acc field ─────────────────────────
+    ("V6 – analyze overfitting: underfit_max_acc field only",
+     textwrap.dedent("""\
+        dataset d = load("x.csv");
+        model SVM s
+        {
+            C = 1
+        }
+        experiment e
+        {
+            train s on d.train;
+            collect metrics [f1];
+            analyze overfitting
+            {
+                underfit_max_acc = 0.60;
+            }
+            compare by f1 higher_is_better;
+            select best;
+        }
+     """)),
+
+    # ── V7 : all seven experiment statement types ─────────────────────────────
+    ("V7 – all seven experiment statement types",
+     textwrap.dedent("""\
+        dataset d = load("bank.csv");
+        model KNN k
+        {
+            k = 7
+        }
+        experiment full_exp
+        {
+            train    k on d.train;
+            evaluate k on d.validation;
+            collect metrics [accuracy, precision, recall, f1];
+            analyze overfitting
+            {
+                threshold = 0.10;
+                underfit_max_acc = 0.55;
+            }
+            compare by f1 higher_is_better;
+            exclude if overfit or underfit;
+            select best;
+        }
+     """)),
+
+    # ── V8 : eval_target – dotted form (NEW) ──────────────────────────────────
+    ("V8 – eval_target: dotted form  evaluate exp.best on d.test",
+     textwrap.dedent("""\
+        dataset d = load("x.csv");
+        evaluate iris_exp.best on d.test;
+     """)),
+
+    # ── V9 : eval_target – bracket form (still valid) ─────────────────────────
+    ("V9 – eval_target: bracket form  evaluate [exp.best] on d.test",
+     textwrap.dedent("""\
+        dataset d = load("x.csv");
+        evaluate [main_exp.best] on d.test;
+     """)),
+
+    # ── V10 : eval_target – plain identifier ─────────────────────────────────
+    ("V10 – eval_target: plain identifier  evaluate model_name on d.test",
+     textwrap.dedent("""\
+        dataset d = load("x.csv");
+        model KNN k
+        {
+            k = 1
+        }
+        evaluate k on d.test;
+     """)),
+
+    # ── V11 : compare direction lower_is_better ───────────────────────────────
+    ("V11 – compare direction: lower_is_better",
+     textwrap.dedent("""\
+        dataset d = load("x.csv");
+        model SVM s
+        {
+            C = 1
+        }
+        experiment e
+        {
+            train s on d.train;
+            collect metrics [recall];
+            compare by recall lower_is_better;
+            select best;
+        }
+     """)),
+
+    # ── V12 : exclude with single condition ──────────────────────────────────
+    ("V12 – exclude if overfit (single condition)",
+     textwrap.dedent("""\
+        dataset d = load("x.csv");
+        model KNN k
+        {
+            k = 3
+        }
+        experiment e
+        {
+            train k on d.train;
+            collect metrics [accuracy];
+            compare by accuracy higher_is_better;
+            exclude if overfit;
+            select best;
+        }
+     """)),
+
+    # ── V13 : all four metric literals ───────────────────────────────────────
+    ("V13 – collect all four metric literals",
      textwrap.dedent("""\
         dataset d = load("x.csv");
         model DecisionTree dt
@@ -398,13 +370,29 @@ VALID_TESTS = [
         }
      """)),
 
-    # ── V13 : sample_1.ayar inline (KNN + DecisionTree / iris) ───────────────
-    ("V13 – sample_1 inline: KNN + DecisionTree, iris dataset",
-     open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                       "sample_1.ayar")).read()
-     if os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                    "sample_1.ayar")) else
+    # ── V14 : report – overfitting_analysis show value ────────────────────────
+    ("V14 – report with show = overfitting_analysis",
      textwrap.dedent("""\
+        report summary
+        {
+            metrics = [accuracy, f1],
+            show    = overfitting_analysis
+        }
+     """)),
+
+    # ── V15 : report – string literal show value ──────────────────────────────
+    ("V15 – report with show = \"confusion_matrix\" (string literal)",
+     textwrap.dedent("""\
+        report summary
+        {
+            metrics = [recall, precision],
+            show    = "confusion_matrix"
+        }
+     """)),
+
+    # ── V16 : sample_1.ayar (KNN + DecisionTree, iris, dotted eval_target) ───
+    ("V16 – sample_1.ayar: KNN + DecisionTree on iris, dotted eval_target",
+     _sample_file("sample_1.ayar") or textwrap.dedent("""\
         dataset iris = load("data/iris.csv");
         split iris into train(0.70), validation(0.15), test(0.15);
         model KNN knn_clf
@@ -426,14 +414,14 @@ VALID_TESTS = [
             collect metrics [accuracy, precision, recall, f1];
             analyze overfitting
             {
-                threshold = 0.08;,
+                threshold = 0.08;
                 underfit_max_acc = 0.55;
             }
             compare by f1 higher_is_better;
             exclude if overfit or underfit;
             select best;
         }
-        evaluate [iris_exp.best] on iris.test;
+        evaluate iris_exp.best on iris.test;
         report iris_report
         {
             metrics = [accuracy, precision, recall, f1],
@@ -441,13 +429,9 @@ VALID_TESTS = [
         }
      """)),
 
-    # ── V14 : sample_2.ayar inline (SVM + NaiveBayes + LR / spam) ────────────
-    ("V14 – sample_2 inline: SVM + NaiveBayes + LogisticRegression, spam",
-     open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                       "sample_2.ayar")).read()
-     if os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                    "sample_2.ayar")) else
-     textwrap.dedent("""\
+    # ── V17 : sample_2.ayar (SVM + NaiveBayes + LR, bracket eval_target) ────
+    ("V17 – sample_2.ayar: SVM + NaiveBayes + LR on spam, bracket eval_target",
+     _sample_file("sample_2.ayar") or textwrap.dedent("""\
         dataset spam = load("datasets/spam_emails.csv");
         split spam into train(0.65), validation(0.20), test(0.15);
         model SVM svm_rbf
@@ -477,14 +461,13 @@ VALID_TESTS = [
             collect metrics [precision, recall, f1];
             analyze overfitting
             {
-                threshold = 0.10;,
-                underfit_max_acc = 0.70;
+                threshold = 0.10;
             }
             compare by recall lower_is_better;
             exclude if underfit;
             select best;
         }
-        evaluate lr_spam on spam.test;
+        evaluate [spam_exp.best] on spam.test;
         report spam_report
         {
             metrics = [precision, recall, f1],
@@ -492,13 +475,9 @@ VALID_TESTS = [
         }
      """)),
 
-    # ── V15 : sample_3.ayar inline (all five models / churn) ─────────────────
-    ("V15 – sample_3 inline: all five models, churn dataset (most complete)",
-     open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                       "sample_3.ayar")).read()
-     if os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                    "sample_3.ayar")) else
-     textwrap.dedent("""\
+    # ── V18 : sample_3.ayar (all five models, churn, plain eval_target) ──────
+    ("V18 – sample_3.ayar: all five models on churn, plain eval_target",
+     _sample_file("sample_3.ayar") or textwrap.dedent("""\
         dataset churn = load("data/customer_churn.csv");
         split churn into train(0.70), validation(0.10), test(0.20);
         model KNN knn_churn
@@ -540,14 +519,14 @@ VALID_TESTS = [
             collect metrics [accuracy, precision, recall, f1];
             analyze overfitting
             {
-                threshold = 0.05;,
+                threshold = 0.05;
                 underfit_max_acc = 0.60;
             }
             compare by accuracy higher_is_better;
             exclude if overfit or underfit;
             select best;
         }
-        evaluate [churn_exp.best] on churn.test;
+        evaluate knn_churn on churn.test;
         report churn_report
         {
             metrics = [accuracy, precision, recall, f1],
@@ -558,18 +537,40 @@ VALID_TESTS = [
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-# INVALID TEST CASES  (programs that MUST be rejected)
+# INVALID TEST CASES
 # ─────────────────────────────────────────────────────────────────────────────
-# Each entry is a (label, source, expected_fragment) tuple.
-# expected_fragment is a substring that must appear in the error message.
+# Each tuple: (label, source, fragment_that_must_appear_in_error_message)
 # ═════════════════════════════════════════════════════════════════════════════
 
 INVALID_TESTS = [
 
     # ── Grammar errors ────────────────────────────────────────────────────────
 
-    # I1 : missing ';' after dataset declaration
-    ("I1 – missing ';' after dataset declaration (ParseError)",
+    # I1 – comma between analyze fields (OLD style, now illegal)
+    ("I1 – comma between analyze fields is now a ParseError (old ;, style)",
+     textwrap.dedent("""\
+        dataset d = load("x.csv");
+        model KNN k
+        {
+            k = 3
+        }
+        experiment e
+        {
+            train k on d.train;
+            collect metrics [accuracy];
+            analyze overfitting
+            {
+                threshold = 0.10;,
+                underfit_max_acc = 0.60;
+            }
+            compare by accuracy higher_is_better;
+            select best;
+        }
+     """),
+     "RBRACE"),
+
+    # I2 – missing ';' after dataset declaration
+    ("I2 – missing ';' after dataset declaration (ParseError)",
      textwrap.dedent("""\
         dataset titanic = load("data/titanic.csv")
 
@@ -580,11 +581,10 @@ INVALID_TESTS = [
      """),
      "SEMICOLON"),
 
-    # I2 : unknown model type 'RandomForest'
-    ("I2 – unknown model type 'RandomForest' (ParseError)",
+    # I3 – unknown model type 'RandomForest'
+    ("I3 – unknown model type 'RandomForest' (ParseError)",
      textwrap.dedent("""\
         dataset bank = load("data/bank.csv");
-
         model RandomForest rf_model
         {
             n_estimators = 100,
@@ -593,8 +593,8 @@ INVALID_TESTS = [
      """),
      "model type"),
 
-    # I3 : invalid split role 'verify' instead of 'validation'
-    ("I3 – invalid split role 'verify' (ParseError)",
+    # I4 – invalid split role 'verify'
+    ("I4 – invalid split role 'verify' (ParseError)",
      textwrap.dedent("""\
         dataset wine = load("data/wine.csv");
         split wine into
@@ -604,8 +604,8 @@ INVALID_TESTS = [
      """),
      "split role"),
 
-    # I4 : missing '=' in model field  (identifier directly followed by value)
-    ("I4 – missing '=' in model field (ParseError)",
+    # I5 – missing '=' in model field
+    ("I5 – missing '=' in model field (ParseError)",
      textwrap.dedent("""\
         model KNN k
         {
@@ -614,8 +614,8 @@ INVALID_TESTS = [
      """),
      "OP_ASSIGN"),
 
-    # I5 : unknown top-level keyword 'pipeline'
-    ("I5 – unknown top-level keyword 'pipeline' (ParseError)",
+    # I6 – unknown top-level keyword 'pipeline'
+    ("I6 – unknown top-level keyword 'pipeline' (ParseError)",
      textwrap.dedent("""\
         dataset credit = load("data/credit_card.csv");
         model LogisticRegression lr_credit
@@ -631,12 +631,7 @@ INVALID_TESTS = [
      """),
      "top-level declaration"),
 
-    # I6 : missing 'into' keyword in split statement
-    ("I6 – missing 'into' in split statement (ParseError)",
-     "split ds train(0.7), validation(0.15), test(0.15);",
-     "into"),
-
-    # I7 : 'loss' is not a recognised metric literal
+    # I7 – invalid metric name 'loss'
     ("I7 – invalid metric name 'loss' in collect (ParseError)",
      textwrap.dedent("""\
         dataset d = load("x.csv");
@@ -654,7 +649,7 @@ INVALID_TESTS = [
      """),
      "METRIC_LITERAL"),
 
-    # I8 : missing '.' in dataset reference (train k on d train)
+    # I8 – missing '.' in dataset reference
     ("I8 – missing '.' in dataset reference (ParseError)",
      textwrap.dedent("""\
         dataset d = load("x.csv");
@@ -669,7 +664,7 @@ INVALID_TESTS = [
      """),
      "DOT"),
 
-    # I9 : unclosed experiment block (missing closing '}')
+    # I9 – unclosed experiment block
     ("I9 – unclosed experiment block, missing '}' (ParseError)",
      textwrap.dedent("""\
         dataset d = load("x.csv");
@@ -684,7 +679,7 @@ INVALID_TESTS = [
      """),
      "'}' to close experiment block"),
 
-    # I10 : invalid compare direction 'max_is_better'
+    # I10 – invalid compare direction
     ("I10 – invalid compare direction 'max_is_better' (ParseError)",
      textwrap.dedent("""\
         dataset d = load("x.csv");
@@ -702,25 +697,46 @@ INVALID_TESTS = [
      """),
      "comparison direction"),
 
+    # I11 – analyze block with zero fields (empty braces)
+    ("I11 – analyze overfitting with empty body (ParseError)",
+     textwrap.dedent("""\
+        dataset d = load("x.csv");
+        model KNN k
+        {
+            k = 3
+        }
+        experiment e
+        {
+            train k on d.train;
+            collect metrics [accuracy];
+            analyze overfitting
+            {
+            }
+            compare by accuracy higher_is_better;
+            select best;
+        }
+     """),
+     "at least one analyze field"),
+
     # ── Layout errors ─────────────────────────────────────────────────────────
 
-    # I11 : '{' on the same line as 'model KNN k'
-    ("I11 – layout: '{' on same line as model header (LayoutError)",
+    # I12 – '{' on same line as model header
+    ("I12 – layout: '{' on same line as model header (LayoutError)",
      "model KNN k {\n    n = 5\n}",
      "LayoutError"),
 
-    # I12 : '{' on the same line as 'experiment e'
-    ("I12 – layout: '{' on same line as experiment header (LayoutError)",
+    # I13 – '{' on same line as experiment header
+    ("I13 – layout: '{' on same line as experiment header (LayoutError)",
      'dataset d = load("x.csv");\nexperiment e {\n    select best;\n}',
      "LayoutError"),
 
-    # I13 : '{' on the same line as 'report r'
-    ("I13 – layout: '{' on same line as report header (LayoutError)",
+    # I14 – '{' on same line as report header
+    ("I14 – layout: '{' on same line as report header (LayoutError)",
      "report r {\n    metrics = [accuracy],\n    show = overfitting_analysis\n}",
      "LayoutError"),
 
-    # I14 : '{' on same line as 'analyze overfitting' (inside experiment)
-    ("I14 – layout: '{' on same line as analyze overfitting (LayoutError)",
+    # I15 – '{' on same line as analyze overfitting
+    ("I15 – layout: '{' on same line as analyze overfitting (LayoutError)",
      textwrap.dedent("""\
         dataset d = load("x.csv");
         model KNN k
@@ -738,8 +754,8 @@ INVALID_TESTS = [
      """),
      "LayoutError"),
 
-    # I15 : '}' on the same line as the last field content
-    ("I15 – layout: '}' on same line as field content (LayoutError)",
+    # I16 – '}' on same line as field content
+    ("I16 – layout: '}' on same line as field content (LayoutError)",
      "model KNN k\n{\n    n = 5 }",
      "LayoutError"),
 ]
@@ -749,39 +765,31 @@ INVALID_TESTS = [
 # TEST RUNNERS
 # ═════════════════════════════════════════════════════════════════════════════
 
-def run_valid_tests() -> tuple:
-    """Run all VALID_TESTS and return (passed, failed) counts."""
+def run_valid_tests():
     passed = failed = 0
     print(BOLD("\n── VALID tests (must parse without errors) " + "─" * 20))
     for label, source in VALID_TESTS:
         ok = run_valid_test(label, source)
-        if ok:
-            passed += 1
-        else:
-            failed += 1
+        passed += ok; failed += not ok
     return passed, failed
 
 
-def run_invalid_tests() -> tuple:
-    """Run all INVALID_TESTS and return (passed, failed) counts."""
+def run_invalid_tests():
     passed = failed = 0
     print(BOLD("\n── INVALID tests (must raise an error) " + "─" * 23))
     for label, source, fragment in INVALID_TESTS:
         ok = run_invalid_test(label, source, fragment)
-        if ok:
-            passed += 1
-        else:
-            failed += 1
+        passed += ok; failed += not ok
     return passed, failed
 
 
 def run_builtin_suite():
-    """Execute the full built-in test suite and print a summary."""
     print(BOLD("\n" + "═" * 64))
-    print(BOLD("  ayar DSL – D3 Test Suite"))
-    print(BOLD("  Imports: ayar_lexer.py, ayar_parser.py  (unmodified)"))
-    print(BOLD("  Adapter: adapt_tokens()  fixes token-name mismatches"))
-    print(BOLD("  Layout rule: '{' and '}' must each be on their own line"))
+    print(BOLD("  ayar DSL – D3 Test Suite  (updated parser / D1 spec)"))
+    print(BOLD("  Lexer  : ayar_lexer.py  (unmodified)"))
+    print(BOLD("  Parser : ayar_parser.py  (updated)"))
+    print(BOLD("  Change : analyze fields use ';' only, no comma between"))
+    print(BOLD("  Change : eval_target accepts dotted form (exp.best)"))
     print(BOLD("═" * 64))
 
     vp, vf = run_valid_tests()
@@ -792,13 +800,10 @@ def run_builtin_suite():
     total   = total_p + total_f
 
     print(BOLD("\n" + "═" * 64))
-    print(BOLD(f"  Valid   tests : {vp}/{vp + vf} passed"))
-    print(BOLD(f"  Invalid tests : {ip}/{ip + if_} passed"))
+    print(BOLD(f"  Valid   tests : {vp}/{vp+vf} passed"))
+    print(BOLD(f"  Invalid tests : {ip}/{ip+if_} passed"))
     summary = f"  Total         : {total_p}/{total} passed"
-    if total_f == 0:
-        print(GREEN(summary))
-    else:
-        print(RED(summary + f"  ({total_f} FAILED)"))
+    print(GREEN(summary) if total_f == 0 else RED(summary + f"  ({total_f} FAILED)"))
     print(BOLD("═" * 64 + "\n"))
 
 
@@ -807,13 +812,11 @@ def run_builtin_suite():
 # ═════════════════════════════════════════════════════════════════════════════
 
 def run_file(path: str):
-    """Parse a .ayar file from disk and print its AST."""
     print(BOLD(f"\nParsing file: {path}"))
     try:
         source = open(path, encoding="utf-8").read()
     except FileNotFoundError:
-        print(RED(f"File not found: {path}"))
-        sys.exit(1)
+        print(RED(f"File not found: {path}")); sys.exit(1)
     try:
         tokens = Lexer(source).tokenize()
         tokens = adapt_tokens(tokens)
@@ -822,50 +825,42 @@ def run_file(path: str):
         for line in Parser.dump_ast(ast).splitlines():
             print("  " + line)
         print(GREEN("\n✓ Parse succeeded."))
-    except LexicalError as err:
-        print(RED(f"\n✗ LexicalError: {err}"))
-        sys.exit(1)
-    except LayoutError as err:
-        print(RED(f"\n✗ LayoutError: {err}"))
-        sys.exit(1)
-    except ParseError as err:
-        print(RED(f"\n✗ ParseError: {err}"))
-        sys.exit(1)
+    except LexicalError as e:
+        print(RED(f"\n✗ LexicalError: {e}")); sys.exit(1)
+    except LayoutError as e:
+        print(RED(f"\n✗ LayoutError: {e}")); sys.exit(1)
+    except ParseError as e:
+        print(RED(f"\n✗ ParseError: {e}")); sys.exit(1)
 
 
 def run_tokens_only(path: str):
-    """Lex a .ayar file and print the token stream (no parsing)."""
     try:
         source = open(path, encoding="utf-8").read()
     except FileNotFoundError:
-        print(RED(f"File not found: {path}"))
-        sys.exit(1)
+        print(RED(f"File not found: {path}")); sys.exit(1)
     tokens = Lexer(source).tokenize()
-    tokens = adapt_tokens(tokens)     # adapter runs here too
+    tokens = adapt_tokens(tokens)
     print(BOLD(f"\nToken stream for: {path}"))
     w_type  = max(len(t.type)  for t in tokens) + 2
     w_value = max(len(t.value) for t in tokens) + 2
     hdr = f"  {'TYPE':<{w_type}} {'VALUE':<{w_value}} {'LINE':>5}  {'COL':>5}"
-    print(hdr)
-    print("  " + "─" * (len(hdr) - 2))
+    print(hdr); print("  " + "─" * (len(hdr) - 2))
     for tok in tokens:
         print(f"  {tok.type:<{w_type}} {tok.value!r:<{w_value}} "
               f"{tok.line_number:>5}  {tok.column_number:>5}")
 
 
 def run_expr(expr_source: str):
-    """Parse a single expression and print its AST."""
     print(BOLD(f"\nParsing expression: {expr_source!r}"))
     try:
-        tokens = Lexer(expr_source).tokenize()
-        tokens = adapt_tokens(tokens)
+        tokens = adapt_tokens(Lexer(expr_source).tokenize())
         ast    = Parser(tokens).parse_expr()
         print(CYAN("  AST:"))
         for line in Parser.dump_ast(ast).splitlines():
             print("  " + line)
         print(GREEN("  ✓ Parsed successfully."))
-    except (LexicalError, LayoutError, ParseError) as err:
-        print(RED(f"  ✗ Error: {err}"))
+    except (LexicalError, LayoutError, ParseError) as e:
+        print(RED(f"  ✗ Error: {e}"))
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -873,22 +868,15 @@ def run_expr(expr_source: str):
 # ═════════════════════════════════════════════════════════════════════════════
 
 def main():
-    ap = argparse.ArgumentParser(
-        description="Test runner for the ayar DSL lexer + parser (CSE341 D3)."
-    )
-    ap.add_argument("--file",   metavar="PATH",
-                    help="Parse a .ayar file from disk and print its AST.")
-    ap.add_argument("--tokens", metavar="PATH",
-                    help="Show the raw token stream for a .ayar file.")
-    ap.add_argument("--expr",   metavar="EXPR",
-                    help='Parse a single expression, e.g. --expr "3+4*2".')
+    ap = argparse.ArgumentParser(description="Test runner for the ayar DSL (CSE341 D3).")
+    ap.add_argument("--file",   metavar="PATH", help="Parse a .ayar file and print its AST.")
+    ap.add_argument("--tokens", metavar="PATH", help="Show the token stream for a .ayar file.")
+    ap.add_argument("--expr",   metavar="EXPR", help='Parse a single expression.')
     args = ap.parse_args()
-
     if   args.tokens: run_tokens_only(args.tokens)
     elif args.file:   run_file(args.file)
     elif args.expr:   run_expr(args.expr)
     else:             run_builtin_suite()
-
 
 if __name__ == "__main__":
     main()

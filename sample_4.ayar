@@ -68,7 +68,7 @@ experiment main_exp
 
     analyze overfitting
     {
-        threshold = 0.05;,
+        threshold = 0.05;
         underfit_max_acc = 0.60;
     }
 

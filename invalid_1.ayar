@@ -1,14 +1,29 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // invalid_1.ayar
-// DELIBERATE ERROR : Missing ';' at the end of the dataset declaration.
-// EXPECTED ERROR   : ParseError – expected SEMICOLON, received KEYWORD 'model'
-//                    at line 5, col 1
+// DELIBERATE ERROR : Comma between analyze fields (old style, now illegal).
+//   The updated grammar requires each analyze field to end with ";" and uses
+//   NO separator between fields — a comma after the ";" is unexpected.
+// EXPECTED ERROR   : ParseError – expected RBRACE, received COMMA
 // ─────────────────────────────────────────────────────────────────────────────
 
-dataset titanic = load("data/titanic.csv")
-                                           // <-- semicolon is missing here
+dataset d = load("data/iris.csv");
 
 model KNN k
 {
     k = 3
+}
+
+experiment e
+{
+    train k on d.train;
+    collect metrics [accuracy];
+
+    analyze overfitting
+    {
+        threshold = 0.10;,
+        underfit_max_acc = 0.60;
+    }
+
+    compare by accuracy higher_is_better;
+    select best;
 }

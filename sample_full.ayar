@@ -1,0 +1,80 @@
+// sample_full.ayar  (D1 spec aligned)
+// ─────────────────────────────────────────────────────────────────
+// This is the exact sample program from the D1 Design Specification
+// Document, extended with all five model types and all field types.
+// RUN: python3 run_tests.py --file sample_full.ayar
+// ─────────────────────────────────────────────────────────────────
+
+dataset iris = load("iris.csv");
+
+split iris into train(0.70), validation(0.15), test(0.15);
+
+model KNN knn_baseline
+{
+    k = 3,
+    distance = "euclidean"
+}
+
+model DecisionTree dt_deep
+{
+    max_depth = 15,
+    criterion = "gini"
+}
+
+model SVM svm_model
+{
+    C = 1,
+    kernel = "rbf",
+    probability = true
+}
+
+model NaiveBayes nb_model
+{
+    var_smoothing = 1
+}
+
+model LogisticRegression lr_model
+{
+    C = 1,
+    max_iter = 200,
+    solver = "lbfgs",
+    verbose = false
+}
+
+experiment iris_comparison
+{
+    train knn_baseline on iris.train;
+    train dt_deep on iris.train;
+    train svm_model on iris.train;
+    train nb_model on iris.train;
+    train lr_model on iris.train;
+
+    evaluate knn_baseline on iris.validation;
+    evaluate dt_deep on iris.validation;
+    evaluate svm_model on iris.validation;
+    evaluate nb_model on iris.validation;
+    evaluate lr_model on iris.validation;
+
+    collect metrics [accuracy, precision, recall, f1];
+
+    analyze overfitting
+    {
+        threshold = 0.10;
+        underfit_max_acc = 0.70;
+    }
+
+    compare by f1 higher_is_better;
+
+    exclude if overfit or underfit;
+
+    select best;
+}
+
+// D1 style: dotted eval_target WITHOUT brackets
+evaluate comparison.best on iris.test;
+
+report final
+{
+    metrics = [accuracy, precision, recall, f1],
+    show = overfitting_analysis
+}

@@ -1,16 +1,13 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // invalid_2.ayar
-// DELIBERATE ERROR : 'RandomForest' is not a recognised model type in ayar.
-//                    Valid types are: KNN, DecisionTree, SVM, NaiveBayes,
-//                    LogisticRegression.
-// EXPECTED ERROR   : ParseError – expected a model type (...), received
-//                    IDENTIFIER 'RandomForest'
+// DELIBERATE ERROR : Missing ";" at the end of the dataset declaration.
+// EXPECTED ERROR   : ParseError – expected SEMICOLON, received KEYWORD 'model'
 // ─────────────────────────────────────────────────────────────────────────────
 
-dataset bank = load("data/bank.csv");
+dataset titanic = load("data/titanic.csv")
+                                           // <-- semicolon missing here
 
-model RandomForest rf_model    // <-- 'RandomForest' is not a valid model type
+model KNN k
 {
-    n_estimators = 100,
-    max_depth = 10
+    k = 3
 }

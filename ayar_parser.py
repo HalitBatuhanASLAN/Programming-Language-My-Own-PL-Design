@@ -350,9 +350,22 @@ class EvalStmtNode(ASTNode):
 
 
 class EvalTargetSimpleNode(ASTNode):
-    def __init__(self, name: str):
+    """
+    Covers both:
+      <identifier>                 – e.g.  myModel
+      <identifier> "." <identifier> – e.g.  comparison.best   (D1 sample)
+
+    D1 EBNF lists only <identifier> in the simple branch, but the D1 sample
+    program uses  "evaluate comparison.best on iris.test;"  without brackets,
+    so the simple branch must also accept a dotted access.
+    attr is None when there is no dot.
+    """
+    def __init__(self, name: str, attr: str = None):
         self.name = name
+        self.attr = attr   # None  → plain identifier,  str → dotted access
     def dump(self, indent=0):
+        if self.attr is not None:
+            return _ind(indent) + f"EvalTarget({self.name!r}.{self.attr!r})"
         return _ind(indent) + f"EvalTarget(id={self.name!r})"
 
 
@@ -832,18 +845,36 @@ class Parser:
 
     def _parse_analyze_stmt(self) -> AnalyzeStmtNode:
         """
-        <analyze_stmt> ::= "analyze" "overfitting" "{" <analyze_field_list> "}"
+        <analyze_stmt>       ::= "analyze" "overfitting" "{" <analyze_field_list> "}"
+        <analyze_field_list> ::= <analyze_field> { <analyze_field> }
+
+        D1 CHANGE: fields are NOT comma-separated.
+        Each field is self-terminating with ";", so the list is simply
+        zero-or-more repetitions of <analyze_field> until "}" is seen.
+
+        D1 sample program:
+            analyze overfitting
+            {
+                threshold = 0.10;
+                underfit_max_acc = 0.70;
+            }
+        No comma appears between the two fields.
         """
         self._consume_keyword("analyze")
         self._consume_keyword("overfitting")
         self._consume("LBRACE")
 
-        fields = [self._parse_analyze_field()]
-        while self._is("COMMA"):
-            self._advance()
-            if self._is("RBRACE"):
-                break
+        fields = []
+        # Loop: keep parsing analyze_fields as long as the next token is a
+        # recognised field keyword, stopping when "}" or EOF is reached.
+        while self._peek().type == "KEYWORD" and               self._peek().value in ("threshold", "underfit_max_acc"):
             fields.append(self._parse_analyze_field())
+
+        if not fields:
+            raise ParseError(
+                "at least one analyze field (KEYWORD 'threshold' or "
+                "'underfit_max_acc')", self._peek()
+            )
 
         self._consume("RBRACE")
         return AnalyzeStmtNode(fields)
@@ -929,18 +960,29 @@ class Parser:
 
     def _parse_eval_target(self) -> ASTNode:
         """
-        Simple target  : just an IDENTIFIER
-        Bracket target : "[" IDENTIFIER "." (IDENTIFIER | KEYWORD) "]"
+        <eval_target> ::= <identifier>
+                        | <identifier> "." <identifier>      ← D1 sample form
+                        | "[" <identifier> "." <identifier> "]"
 
-        IMPORTANT: in the grammar example  [main_exp.best]  the word "best"
-        is classified as KEYWORD by the student's lexer, so we must accept
-        both IDENTIFIER and KEYWORD after the DOT.
+        D1 CHANGE: the simple (no-bracket) branch now also accepts a dotted
+        access.  The D1 sample program uses:
+            evaluate comparison.best on iris.test;
+        "comparison.best" is two plain identifiers joined by ".", with NO
+        brackets.  The EBNF only lists <identifier> for the simple branch, but
+        the authoritative sample shows this dotted form is valid.
+
+        Disambiguation: we parse the first IDENTIFIER, then peek at the next
+        token.  If it is a DOT we consume it and the following name; otherwise
+        we return a plain identifier target.
+
+        Bracket target uses LBRACKET as its unambiguous lead token.
+        After the DOT we accept both IDENTIFIER and KEYWORD because "best"
+        is classified as KEYWORD by the student's lexer.
         """
         if self._is("LBRACKET"):
             self._advance()                                   # consume "["
             obj = self._consume("IDENTIFIER").value
             self._consume("DOT")
-            # The attribute can be a KEYWORD (e.g. "best") or an IDENTIFIER.
             attr_tok = self._peek()
             if attr_tok.type not in ("IDENTIFIER", "KEYWORD"):
                 raise ParseError(
@@ -950,7 +992,18 @@ class Parser:
             self._consume("RBRACKET")
             return EvalTargetBracketNode(obj, attr)
         else:
+            # Simple branch: <identifier> [ "." <identifier> ]
             name = self._consume("IDENTIFIER").value
+            if self._is("DOT"):
+                self._advance()                               # consume "."
+                attr_tok = self._peek()
+                if attr_tok.type not in ("IDENTIFIER", "KEYWORD"):
+                    raise ParseError(
+                        "an IDENTIFIER or KEYWORD after '.' in eval target",
+                        attr_tok
+                    )
+                attr = self._advance().value
+                return EvalTargetSimpleNode(name, attr)
             return EvalTargetSimpleNode(name)
 
     # ══════════════════════════════════════════════════════════════════════════
@@ -1146,34 +1199,47 @@ class Parser:
 if __name__ == "__main__":
     from ayar_lexer import Lexer
 
+    # ── D1 sample program (from Design Specification Document) ───────────────
     SRC = r'''
-// Full program – exercises every grammar rule
-dataset iris = load("data/iris.csv");
+dataset iris = load("iris.csv");
+
 split iris into train(0.70), validation(0.15), test(0.15);
 
-model KNN knn1 { k = 5, metric = "euclidean", weights = "uniform" }
-model DecisionTree dt1 { max_depth = 8, criterion = "entropy" }
+model KNN knn_baseline
+{
+    k = 3,
+    distance = "euclidean"
+}
 
-experiment main_exp {
-    train knn1 on iris.train;
-    train dt1  on iris.train;
-    evaluate knn1 on iris.validation;
-    evaluate dt1  on iris.validation;
+model DecisionTree dt_deep
+{
+    max_depth = 15,
+    criterion = "gini"
+}
+
+experiment iris_comparison
+{
+    train knn_baseline on iris.train;
+    train dt_deep on iris.train;
+    evaluate knn_baseline on iris.validation;
+    evaluate dt_deep on iris.validation;
     collect metrics [accuracy, precision, recall, f1];
-    analyze overfitting {
-        threshold = 0.10;,
-        underfit_max_acc = 0.60;
+    analyze overfitting
+    {
+        threshold = 0.10;
+        underfit_max_acc = 0.70;
     }
     compare by f1 higher_is_better;
     exclude if overfit or underfit;
     select best;
 }
 
-evaluate [main_exp.best] on iris.test;
+evaluate comparison.best on iris.test;
 
-report final_report {
-    metrics = [accuracy, f1],
-    show    = overfitting_analysis
+report final
+{
+    metrics = [accuracy, precision, recall, f1],
+    show = overfitting_analysis
 }
 '''
     tokens = Lexer(SRC).tokenize()

@@ -1,21 +1,20 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // sample_3.ayar
-// DESCRIPTION : Customer churn prediction – all five model types in one
-//               experiment, bracket evaluate target, and both report fields.
-//               This is the most complete example: every top-level construct
-//               and every experiment statement appears at least once.
+// DESCRIPTION : Customer churn prediction — all five model types, most
+//               complete example. Exercises every top-level construct and
+//               every experiment statement at least once.
+// COVERS      : all 5 model types, analyze with BOTH fields (no comma between
+//               them), plain-identifier eval_target (no dot, no brackets),
+//               both report field kinds.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// ── 1. Dataset ───────────────────────────────────────────────────────────────
 dataset churn = load("data/customer_churn.csv");
 
-// ── 2. Split ─────────────────────────────────────────────────────────────────
 split churn into
     train(0.70),
     validation(0.10),
     test(0.20);
 
-// ── 3. All five model types ───────────────────────────────────────────────────
 model KNN knn_churn
 {
     n_neighbors = 5,
@@ -47,11 +46,9 @@ model LogisticRegression lr_churn
     C = 1,
     max_iter = 200,
     solver = "lbfgs",
-    multi_class = "auto",
     verbose = false
 }
 
-// ── 4. Experiment (all seven statement kinds) ─────────────────────────────────
 experiment churn_exp
 {
     train knn_churn on churn.train;
@@ -70,7 +67,7 @@ experiment churn_exp
 
     analyze overfitting
     {
-        threshold = 0.05;,
+        threshold = 0.05;
         underfit_max_acc = 0.60;
     }
 
@@ -81,10 +78,9 @@ experiment churn_exp
     select best;
 }
 
-// ── 5. Final evaluation – bracket target ──────────────────────────────────────
-evaluate [churn_exp.best] on churn.test;
+// plain-identifier eval_target – simplest form, no dot, no brackets
+evaluate knn_churn on churn.test;
 
-// ── 6. Report – both field kinds ──────────────────────────────────────────────
 report churn_report
 {
     metrics = [accuracy, precision, recall, f1],

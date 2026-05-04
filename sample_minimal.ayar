@@ -1,0 +1,27 @@
+// sample_minimal.ayar  (D1 spec aligned)
+// ─────────────────────────────────────────────────────────────────
+// Smallest valid program.
+// RUN: python3 run_tests.py --file sample_minimal.ayar
+// ─────────────────────────────────────────────────────────────────
+
+dataset d = load("wine.csv");
+
+model KNN m
+{
+    k = 3
+}
+
+experiment e
+{
+    train m on d.train;
+    evaluate m on d.validation;
+    collect metrics [accuracy];
+    analyze overfitting
+    {
+        threshold = 0.05;
+    }
+    compare by accuracy higher_is_better;
+    select best;
+}
+
+evaluate comparison.best on d.test;
