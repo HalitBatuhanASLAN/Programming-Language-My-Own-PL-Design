@@ -1,0 +1,14 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// invalid_3.ayar
+// DELIBERATE ERROR : 'verify' is not a valid split role.
+//                    Valid roles are: train, validation, test.
+// EXPECTED ERROR   : ParseError – expected a split role ('train',
+//                    'validation', 'test'), received IDENTIFIER 'verify'
+// ─────────────────────────────────────────────────────────────────────────────
+
+dataset wine = load("data/wine.csv");
+
+split wine into
+    train(0.60),
+    verify(0.20),    // <-- 'verify' is not a recognised split role
+    test(0.20);

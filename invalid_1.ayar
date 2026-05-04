@@ -1,0 +1,14 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// invalid_1.ayar
+// DELIBERATE ERROR : Missing ';' at the end of the dataset declaration.
+// EXPECTED ERROR   : ParseError – expected SEMICOLON, received KEYWORD 'model'
+//                    at line 5, col 1
+// ─────────────────────────────────────────────────────────────────────────────
+
+dataset titanic = load("data/titanic.csv")
+                                           // <-- semicolon is missing here
+
+model KNN k
+{
+    k = 3
+}

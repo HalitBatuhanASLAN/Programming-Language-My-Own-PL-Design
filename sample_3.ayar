@@ -1,0 +1,92 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// sample_3.ayar
+// DESCRIPTION : Customer churn prediction – all five model types in one
+//               experiment, bracket evaluate target, and both report fields.
+//               This is the most complete example: every top-level construct
+//               and every experiment statement appears at least once.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── 1. Dataset ───────────────────────────────────────────────────────────────
+dataset churn = load("data/customer_churn.csv");
+
+// ── 2. Split ─────────────────────────────────────────────────────────────────
+split churn into
+    train(0.70),
+    validation(0.10),
+    test(0.20);
+
+// ── 3. All five model types ───────────────────────────────────────────────────
+model KNN knn_churn
+{
+    n_neighbors = 5,
+    weights = "uniform",
+    algorithm = "auto"
+}
+
+model DecisionTree dt_churn
+{
+    max_depth = 12,
+    criterion = "entropy",
+    min_samples_leaf = 5
+}
+
+model SVM svm_churn
+{
+    C = 5,
+    kernel = "linear",
+    probability = false
+}
+
+model NaiveBayes nb_churn
+{
+    var_smoothing = 1
+}
+
+model LogisticRegression lr_churn
+{
+    C = 1,
+    max_iter = 200,
+    solver = "lbfgs",
+    multi_class = "auto",
+    verbose = false
+}
+
+// ── 4. Experiment (all seven statement kinds) ─────────────────────────────────
+experiment churn_exp
+{
+    train knn_churn on churn.train;
+    train dt_churn  on churn.train;
+    train svm_churn on churn.train;
+    train nb_churn  on churn.train;
+    train lr_churn  on churn.train;
+
+    evaluate knn_churn on churn.validation;
+    evaluate dt_churn  on churn.validation;
+    evaluate svm_churn on churn.validation;
+    evaluate nb_churn  on churn.validation;
+    evaluate lr_churn  on churn.validation;
+
+    collect metrics [accuracy, precision, recall, f1];
+
+    analyze overfitting
+    {
+        threshold = 0.05;,
+        underfit_max_acc = 0.60;
+    }
+
+    compare by accuracy higher_is_better;
+
+    exclude if overfit or underfit;
+
+    select best;
+}
+
+// ── 5. Final evaluation – bracket target ──────────────────────────────────────
+evaluate [churn_exp.best] on churn.test;
+
+// ── 6. Report – both field kinds ──────────────────────────────────────────────
+report churn_report
+{
+    metrics = [accuracy, precision, recall, f1],
+    show    = overfitting_analysis
+}

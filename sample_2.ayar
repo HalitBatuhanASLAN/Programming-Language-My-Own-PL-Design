@@ -1,0 +1,76 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// sample_2.ayar
+// DESCRIPTION : Email spam detection comparing SVM, NaiveBayes, and
+//               LogisticRegression.  Covers the three model types NOT used
+//               in sample_1, uses float/bool/int/string field values,
+//               lower_is_better compare direction, and a report with a
+//               string "show" value.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── 1. Dataset ───────────────────────────────────────────────────────────────
+dataset spam = load("datasets/spam_emails.csv");
+
+// ── 2. Split ─────────────────────────────────────────────────────────────────
+split spam into
+    train(0.65),
+    validation(0.20),
+    test(0.15);
+
+// ── 3. Models ────────────────────────────────────────────────────────────────
+model SVM svm_rbf
+{
+    C = 10,
+    kernel = "rbf",
+    tol = 0.001,
+    probability = true,
+    shrinking = true
+}
+
+model NaiveBayes gnb
+{
+    var_smoothing = 1
+}
+
+model LogisticRegression lr_spam
+{
+    C = 1,
+    max_iter = 500,
+    solver = "liblinear",
+    verbose = false
+}
+
+// ── 4. Experiment ─────────────────────────────────────────────────────────────
+experiment spam_exp
+{
+    train svm_rbf  on spam.train;
+    train gnb      on spam.train;
+    train lr_spam  on spam.train;
+
+    evaluate svm_rbf  on spam.validation;
+    evaluate gnb      on spam.validation;
+    evaluate lr_spam  on spam.validation;
+
+    collect metrics [precision, recall, f1];
+
+    analyze overfitting
+    {
+        threshold = 0.10;,
+        underfit_max_acc = 0.70;
+    }
+
+    compare by recall lower_is_better;
+
+    exclude if underfit;
+
+    select best;
+}
+
+// ── 5. Final evaluation – simple identifier target ────────────────────────────
+evaluate lr_spam on spam.test;
+
+// ── 6. Report – string show value ─────────────────────────────────────────────
+report spam_report
+{
+    metrics = [precision, recall, f1],
+    show    = "confusion_matrix"
+}

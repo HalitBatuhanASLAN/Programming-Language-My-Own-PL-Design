@@ -1,0 +1,93 @@
+// sample_full.ayar
+// ─────────────────────────────────────────────────────────────────
+// PURPOSE : Exercises EVERY grammar rule at least once.
+// RUN     : python3 run_tests.py --file sample_full.ayar
+// NOTE    : Every '{' and '}' is on its own line (layout rule).
+// ─────────────────────────────────────────────────────────────────
+
+// 1. Dataset declaration
+dataset iris = load("iris.csv");
+
+// 2. Split statement
+split iris into
+    train(0.70),
+    validation(0.15),
+    test(0.15);
+
+// 3. Model declarations – all five types, all four field value kinds
+model KNN knn_model
+{
+    n_neighbors = 5,
+    weights = "uniform",
+    leaf_size = 30
+}
+
+model DecisionTree dt_model
+{
+    max_depth = 10,
+    criterion = "gini",
+    min_samples_split = 2
+}
+
+model SVM svm_model
+{
+    C = 1,
+    kernel = "rbf",
+    probability = true
+}
+
+model NaiveBayes nb_model
+{
+    var_smoothing = 1
+}
+
+model LogisticRegression lr_model
+{
+    C = 1,
+    max_iter = 200,
+    solver = "lbfgs",
+    verbose = false
+}
+
+// 4. Experiment – all seven statement types
+experiment main_exp
+{
+    train knn_model on iris.train;
+    train dt_model  on iris.train;
+    train svm_model on iris.train;
+    train nb_model  on iris.train;
+    train lr_model  on iris.train;
+
+    evaluate knn_model on iris.validation;
+    evaluate dt_model  on iris.validation;
+    evaluate svm_model on iris.validation;
+    evaluate nb_model  on iris.validation;
+    evaluate lr_model  on iris.validation;
+
+    collect metrics [accuracy, precision, recall, f1];
+
+    analyze overfitting
+    {
+        threshold = 0.05;,
+        underfit_max_acc = 0.60;
+    }
+
+    compare by accuracy higher_is_better;
+
+    exclude if overfit or underfit;
+
+    select best;
+}
+
+// 5. Top-level evaluate – simple target
+evaluate knn_model on iris.test;
+
+// 6. Top-level evaluate – bracket target ("best" is a KEYWORD, handled correctly)
+evaluate [main_exp.best] on iris.test;
+
+// 7. Report
+report final_report
+{
+    metrics = [accuracy, precision, recall, f1],
+    show    = overfitting_analysis
+}

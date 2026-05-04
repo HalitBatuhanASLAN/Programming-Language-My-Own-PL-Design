@@ -1,0 +1,67 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// sample_1.ayar
+// DESCRIPTION : Binary-class flower classification using KNN and DecisionTree.
+// FEATURES    : dataset decl, split, 2 model types (int/string/bool fields),
+//               experiment with train + evaluate + collect + analyze +
+//               compare + exclude + select, top-level evaluate (bracket form),
+//               and a report with both field types.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── 1. Load dataset ──────────────────────────────────────────────────────────
+dataset iris = load("data/iris.csv");
+
+// ── 2. Split into three partitions ───────────────────────────────────────────
+split iris into
+    train(0.70),
+    validation(0.15),
+    test(0.15);
+
+// ── 3. Model declarations ────────────────────────────────────────────────────
+model KNN knn_clf
+{
+    n_neighbors = 7,
+    weights = "distance",
+    leaf_size = 20
+}
+
+model DecisionTree dt_clf
+{
+    max_depth = 8,
+    criterion = "gini",
+    min_samples_split = 4,
+    splitter = "best"
+}
+
+// ── 4. Experiment ─────────────────────────────────────────────────────────────
+experiment iris_exp
+{
+    train knn_clf on iris.train;
+    train dt_clf  on iris.train;
+
+    evaluate knn_clf on iris.validation;
+    evaluate dt_clf  on iris.validation;
+
+    collect metrics [accuracy, precision, recall, f1];
+
+    analyze overfitting
+    {
+        threshold = 0.08;,
+        underfit_max_acc = 0.55;
+    }
+
+    compare by f1 higher_is_better;
+
+    exclude if overfit or underfit;
+
+    select best;
+}
+
+// ── 5. Final evaluation on held-out test set (bracket target) ─────────────────
+evaluate [iris_exp.best] on iris.test;
+
+// ── 6. Report ─────────────────────────────────────────────────────────────────
+report iris_report
+{
+    metrics = [accuracy, precision, recall, f1],
+    show    = overfitting_analysis
+}

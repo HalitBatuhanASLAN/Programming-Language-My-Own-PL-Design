@@ -1,0 +1,16 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// invalid_4.ayar
+// DELIBERATE ERROR : The opening brace '{' appears on the same line as
+//                    the model header instead of on its own line.
+// EXPECTED ERROR   : LayoutError – '{' must be on its own line
+// NOTE             : This is a LAYOUT error, not a grammar error.  The
+//                    ayar language requires every '{' and '}' to occupy
+//                    its own source line.
+// ─────────────────────────────────────────────────────────────────────────────
+
+dataset mnist = load("data/mnist.csv");
+
+model SVM svm_model {   // <-- '{' must be on its own line!
+    C = 1,
+    kernel = "poly"
+}

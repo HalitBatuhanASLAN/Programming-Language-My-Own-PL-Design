@@ -1,0 +1,16 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// invalid_2.ayar
+// DELIBERATE ERROR : 'RandomForest' is not a recognised model type in ayar.
+//                    Valid types are: KNN, DecisionTree, SVM, NaiveBayes,
+//                    LogisticRegression.
+// EXPECTED ERROR   : ParseError – expected a model type (...), received
+//                    IDENTIFIER 'RandomForest'
+// ─────────────────────────────────────────────────────────────────────────────
+
+dataset bank = load("data/bank.csv");
+
+model RandomForest rf_model    // <-- 'RandomForest' is not a valid model type
+{
+    n_estimators = 100,
+    max_depth = 10
+}

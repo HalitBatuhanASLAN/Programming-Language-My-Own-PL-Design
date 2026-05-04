@@ -1,0 +1,23 @@
+// sample_minimal.ayar
+// ─────────────────────────────────────────────────────────────────
+// PURPOSE : Smallest possible valid program – good first smoke test.
+// RUN     : python3 run_tests.py --file sample_minimal.ayar
+// EXPECTED: Parser succeeds, AST has 3 top-level nodes.
+// NOTE    : Every '{' and '}' is on its own line (layout rule).
+// ─────────────────────────────────────────────────────────────────
+
+dataset d = load("wine.csv");
+
+model KNN m
+{
+    k = 3
+}
+
+experiment e
+{
+    train m on d.train;
+    evaluate m on d.validation;
+    collect metrics [accuracy];
+    compare by accuracy higher_is_better;
+    select best;
+}
