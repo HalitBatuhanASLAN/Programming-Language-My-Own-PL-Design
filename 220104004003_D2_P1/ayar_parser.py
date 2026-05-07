@@ -649,7 +649,11 @@ class Parser:
         """
         <split_part> ::= <split_role> "(" <float_literal> ")"
         <split_role> ::= "train" | "validation" | "test"
+
         Split roles are emitted as KEYWORD tokens by the student's lexer.
+        The ratio MUST be a FLOAT_LITERAL (e.g. 0.70) — D1 EBNF does not
+        allow a plain integer here.  An integer would be rejected with a
+        ParseError pointing to the INT_LITERAL token.
         """
         tok = self._peek()
         if tok.type != "KEYWORD" or tok.value not in _SPLIT_ROLES:
@@ -659,8 +663,12 @@ class Parser:
         role = self._advance().value
         self._consume("LPAREN")
         ratio_tok = self._peek()
-        if ratio_tok.type not in ("FLOAT_LITERAL", "INT_LITERAL"):
-            raise ParseError("a float literal for the split ratio", ratio_tok)
+        if ratio_tok.type != "FLOAT_LITERAL":
+            raise ParseError(
+                "a FLOAT_LITERAL for the split ratio "
+                "(D1 EBNF: <split_part> ::= <split_role> '(' <float_literal> ')')",
+                ratio_tok
+            )
         ratio = float(self._advance().value)
         self._consume("RPAREN")
         return SplitPartNode(role, ratio)
@@ -867,7 +875,8 @@ class Parser:
         fields = []
         # Loop: keep parsing analyze_fields as long as the next token is a
         # recognised field keyword, stopping when "}" or EOF is reached.
-        while self._peek().type == "KEYWORD" and               self._peek().value in ("threshold", "underfit_max_acc"):
+        while (self._peek().type == "KEYWORD" and
+               self._peek().value in ("threshold", "underfit_max_acc")):
             fields.append(self._parse_analyze_field())
 
         if not fields:
@@ -1199,49 +1208,16 @@ class Parser:
 if __name__ == "__main__":
     from ayar_lexer import Lexer
 
-    # ── D1 sample program (from Design Specification Document) ───────────────
-    SRC = r'''
-dataset iris = load("iris.csv");
+    # ── Runs all three variants of the D1 SAMPLE_PROGRAM ───────────────────
+    from ayar_lexer import SAMPLE_PROGRAM, SAMPLE_BRACKET_EVAL
 
-split iris into train(0.70), validation(0.15), test(0.15);
+    print("=== Sample 1: D1 spec program (dotted eval_target) ===")
+    tokens = Lexer(SAMPLE_PROGRAM).tokenize()
+    ast    = Parser(tokens).parse()
+    Parser.print_tree(ast)
 
-model KNN knn_baseline
-{
-    k = 3,
-    distance = "euclidean"
-}
-
-model DecisionTree dt_deep
-{
-    max_depth = 15,
-    criterion = "gini"
-}
-
-experiment iris_comparison
-{
-    train knn_baseline on iris.train;
-    train dt_deep on iris.train;
-    evaluate knn_baseline on iris.validation;
-    evaluate dt_deep on iris.validation;
-    collect metrics [accuracy, precision, recall, f1];
-    analyze overfitting
-    {
-        threshold = 0.10;
-        underfit_max_acc = 0.70;
-    }
-    compare by f1 higher_is_better;
-    exclude if overfit or underfit;
-    select best;
-}
-
-evaluate comparison.best on iris.test;
-
-report final
-{
-    metrics = [accuracy, precision, recall, f1],
-    show = overfitting_analysis
-}
-'''
-    tokens = Lexer(SRC).tokenize()
+    print()
+    print("=== Sample 2: bracketed eval_target form ===")
+    tokens = Lexer(SAMPLE_BRACKET_EVAL).tokenize()
     ast    = Parser(tokens).parse()
     Parser.print_tree(ast)
