@@ -1,11 +1,18 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // sample_3.ayar
-// DESCRIPTION : Customer churn prediction — all five model types, most
-//               complete example. Exercises every top-level construct and
-//               every experiment statement at least once.
-// COVERS      : all 5 model types, analyze with BOTH fields (no comma between
-//               them), plain-identifier eval_target (no dot, no brackets),
-//               both report field kinds.
+// DESCRIPTION : Customer churn — all five model types, strict threshold.
+// FEATURES    : all 5 model types (KNN, DecisionTree, SVM, NaiveBayes,
+//               LogisticRegression), bool + float + string + int field values,
+//               threshold deliberately set below the fixed train-eval gap so
+//               that every model is tagged as overfit and excluded, exercising
+//               the NoEligibleModelError failure path of select best.
+//
+// EXPECTED OUTCOME : NoEligibleModelError (NOT a report)
+//   The _TRAIN_BONUS is 0.07 for every model, so train_acc - eval_acc = 0.07.
+//   threshold = 0.05 < 0.07 → every model satisfies overfit condition.
+//   After 'exclude if overfit', M is empty.
+//   'select best' then raises NoEligibleModelError per Rule P-SelectBest
+//   (failure case): dom(M') = ∅.
 // ─────────────────────────────────────────────────────────────────────────────
 
 dataset churn = load("data/customer_churn.csv");
@@ -17,21 +24,19 @@ split churn into
 
 model KNN knn_churn
 {
-    n_neighbors = 5,
-    weights = "uniform",
-    algorithm = "auto"
+    k = 5,
+    distance = "euclidean"
 }
 
 model DecisionTree dt_churn
 {
-    max_depth = 12,
-    criterion = "entropy",
-    min_samples_leaf = 5
+    max_depth = 10,
+    criterion = "entropy"
 }
 
 model SVM svm_churn
 {
-    C = 5,
+    C = 3,
     kernel = "linear",
     probability = false
 }
@@ -43,8 +48,7 @@ model NaiveBayes nb_churn
 
 model LogisticRegression lr_churn
 {
-    C = 1,
-    max_iter = 200,
+    max_iter = 150,
     solver = "lbfgs",
     verbose = false
 }
@@ -68,18 +72,17 @@ experiment churn_exp
     analyze overfitting
     {
         threshold = 0.05;
-        underfit_max_acc = 0.60;
+        underfit_max_acc = 0.55;
     }
 
     compare by accuracy higher_is_better;
 
-    exclude if overfit or underfit;
+    exclude if overfit;
 
     select best;
 }
 
-// plain-identifier eval_target – simplest form, no dot, no brackets
-evaluate knn_churn on churn.test;
+evaluate churn_exp.best on churn.test;
 
 report churn_report
 {

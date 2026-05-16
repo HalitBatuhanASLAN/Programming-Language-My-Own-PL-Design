@@ -1,13 +1,17 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // sample_1.ayar
-// DESCRIPTION : Iris flower classification using KNN and DecisionTree.
-// COVERS      : dataset decl, split, 2 model types (int/string/bool fields),
-//               full experiment (all 7 statement types), dotted eval_target
-//               (identifier.identifier form, no brackets), report.
+// DESCRIPTION : Iris flower classification — KNN vs DecisionTree.
+// FEATURES    : dataset decl, split, 2 model types (int + string fields),
+//               full experiment pipeline (all 7 statement types),
+//               compare by f1 higher_is_better, dotted eval_target,
+//               report with overfitting_analysis.
 //
-// CRITICAL SYNTAX RULES (updated parser / D1 spec):
-//   analyze fields: each ends with ";" only — NO comma between fields
-//   eval_target: dotted form   evaluate exp_name.best on dataset.role;
+// EXPECTED WINNER : dt_clf (DecisionTree)
+//   DecisionTree formula: accuracy = min(0.60 + max_depth*0.05, 0.92)
+//   With max_depth=8 → eval_acc=0.92, f1=0.90
+//   KNN formula: accuracy = max(0.60, 0.95 - k*0.02)
+//   With k=5 → eval_acc=0.85, f1=0.84
+//   Both models pass the overfitting check (gap=0.07, threshold=0.10).
 // ─────────────────────────────────────────────────────────────────────────────
 
 dataset iris = load("data/iris.csv");
@@ -19,16 +23,14 @@ split iris into
 
 model KNN knn_clf
 {
-    n_neighbors = 7,
-    weights = "distance",
-    leaf_size = 20
+    k = 5,
+    distance = "euclidean"
 }
 
 model DecisionTree dt_clf
 {
     max_depth = 8,
-    criterion = "gini",
-    min_samples_split = 4
+    criterion = "gini"
 }
 
 experiment iris_exp
@@ -43,7 +45,7 @@ experiment iris_exp
 
     analyze overfitting
     {
-        threshold = 0.08;
+        threshold = 0.10;
         underfit_max_acc = 0.55;
     }
 
@@ -54,7 +56,6 @@ experiment iris_exp
     select best;
 }
 
-// dotted eval_target: identifier.identifier (no brackets) – NEW form
 evaluate iris_exp.best on iris.test;
 
 report iris_report

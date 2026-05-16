@@ -71,7 +71,7 @@ experiment iris_comparison
 }
 
 // D1 style: dotted eval_target WITHOUT brackets
-evaluate comparison.best on iris.test;
+evaluate iris_comparison.best on iris.test;
 
 report final
 {
