@@ -1,0 +1,76 @@
+// Valid program — all five model types, each trained and evaluated.
+// Expected: zero type errors.
+// This exercises that R1 does not fire for any of the five model names,
+// R2 does not fire (iris is declared and split), R5 does not fire
+// (train uses iris.train, not iris.test), and R4 does not fire
+// (compare by f1, and f1 is in the collected list).
+
+dataset iris = load("data/iris.csv");
+
+split iris into train(0.70), validation(0.15), test(0.15);
+
+model KNN knn
+{
+    k = 3,
+    distance = "euclidean"
+}
+
+model DecisionTree dt
+{
+    max_depth = 8,
+    criterion = "gini"
+}
+
+model SVM svm
+{
+    C = 5,
+    kernel = "rbf"
+}
+
+model NaiveBayes nb
+{
+    var_smoothing = 1
+}
+
+model LogisticRegression lr
+{
+    max_iter = 300,
+    solver = "lbfgs"
+}
+
+experiment all_five
+{
+    train knn on iris.train;
+    train dt  on iris.train;
+    train svm on iris.train;
+    train nb  on iris.train;
+    train lr  on iris.train;
+
+    evaluate knn on iris.validation;
+    evaluate dt  on iris.validation;
+    evaluate svm on iris.validation;
+    evaluate nb  on iris.validation;
+    evaluate lr  on iris.validation;
+
+    collect metrics [accuracy, precision, recall, f1];
+
+    analyze overfitting
+    {
+        threshold = 0.10;
+        underfit_max_acc = 0.55;
+    }
+
+    compare by f1 higher_is_better;
+
+    exclude if overfit or underfit;
+
+    select best;
+}
+
+evaluate all_five.best on iris.test;
+
+report final
+{
+    metrics = [accuracy, precision, recall, f1],
+    show = overfitting_analysis
+}

@@ -1,0 +1,24 @@
+// compare by accuracy, but collect metrics does not include accuracy.
+// Expected: R4-UncollectedMetric — 'accuracy' not in ['f1','precision','recall'].
+
+dataset d = load("data/x.csv");
+
+split d into train(0.70), validation(0.15), test(0.15);
+
+model SVM svm
+{
+    C = 2,
+    kernel = "rbf"
+}
+
+experiment e
+{
+    train svm on d.train;
+    evaluate svm on d.validation;
+
+    collect metrics [f1, precision, recall];
+
+    compare by accuracy higher_is_better;
+
+    select best;
+}

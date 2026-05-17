@@ -1,0 +1,36 @@
+// A model name that is identical to a dataset name.
+// In Ayar both names share the same global environment Gamma,
+// but they are bound at different times by different rules:
+//   E-DatasetDecl binds  iris  -> DatasetRecord
+//   E-ModelDecl   binds  iris  -> ModelRecord  (OVERWRITES the DatasetRecord!)
+//
+// Type checker perspective: _declared_datasets and _declared_models are
+// separate sets, so there is no name-collision rule — the checker will
+// not flag this.
+//
+// Interpreter perspective: after the model declaration, Gamma["iris"]
+// holds the ModelRecord, NOT the DatasetRecord.  References to iris.train
+// then fail at runtime because the DatasetRecord is gone.
+//
+// Expected TYPE CHECKER output: no errors (checker uses separate sets).
+// Expected INTERPRETER output:  RuntimeError or warning during execution
+//                               because iris.train is no longer resolvable.
+
+dataset iris = load("data/iris.csv");
+
+split iris into train(0.70), validation(0.15), test(0.15);
+
+// This model is intentionally named "iris" — same as the dataset above.
+model KNN iris
+{
+    k = 3
+}
+
+experiment e
+{
+    train iris on iris.train;
+    evaluate iris on iris.validation;
+    collect metrics [accuracy];
+    compare by accuracy higher_is_better;
+    select best;
+}

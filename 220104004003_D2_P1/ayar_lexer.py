@@ -159,6 +159,8 @@ BOOL_LITERALS: frozenset = frozenset({"true", "false"})
 #    ORDER IS CRITICAL:
 #      • NEWLINE before WHITESPACE so '\n' increments the line counter rather
 #        than just advancing the column.
+#      • BLOCK_COMMENT (/* … */) before COMMENT (//…) and before OP_DIV (/)
+#        so that "/*" is never split into two tokens.
 #      • COMMENT (//…) before OP_DIV (/) so "//" is never split into two
 #        division operators.
 #      • STRING_LITERAL early so its content is never re-tokenised.
@@ -176,6 +178,11 @@ TOKEN_SPEC: List[tuple] = [
     # NEWLINE is a distinct entry so the main loop can increment line_number.
     ("NEWLINE",        r"\n"),
     ("WHITESPACE",     r"[ \t\r]+"),
+    # BLOCK_COMMENT must precede COMMENT (which starts with /) and OP_DIV (/)
+    # so that "/*" is never split into OP_DIV + OP_MUL.
+    # [\s\S]*? matches any character including newlines (non-greedy).
+    # BLOCK_COMMENT is silently consumed exactly like COMMENT.
+    ("BLOCK_COMMENT",  r"/\*[\s\S]*?\*/"),
     ("COMMENT",        r"//[^\n]*"),          # everything from // to end-of-line
 
     # ── string literal ────────────────────────────────────────────────────────
@@ -318,6 +325,18 @@ class Lexer:
 
             if token_type in ("WHITESPACE", "COMMENT"):
                 col += len(lexeme)
+                continue                        # do not append a token
+
+            if token_type == "BLOCK_COMMENT":
+                # A block comment can span multiple lines.
+                # Count embedded newlines and update line/col accordingly.
+                newline_count = lexeme.count("\n")
+                if newline_count:
+                    line += newline_count
+                    # col resets to 1 + characters after the last newline
+                    col = len(lexeme) - lexeme.rfind("\n")
+                else:
+                    col += len(lexeme)
                 continue                        # do not append a token
 
             # ── advance column for all yielded tokens ─────────────────────

@@ -1,0 +1,76 @@
+// Two SVM models with identical hyperparameters (C=2, kernel="rbf")
+// but different names: svm_a and svm_b.
+//
+// Both produce identical metric values because simulate() is deterministic
+// and depends only on model_type + hyperparams, not the model name.
+//
+// SVM C=2 formula:
+//   acc = min(0.70 + 2*0.03, 0.94) = min(0.76, 0.94) = 0.76
+//   f1  = 0.76 - 0.01 = 0.75
+//   precision = 0.76 + 0.02 = 0.78
+//   recall    = 0.76 - 0.02 = 0.74
+//
+// compare by accuracy higher_is_better:
+//   Both have accuracy=0.76 → tie.
+//   Python's sorted() is stable — svm_a was inserted into M first,
+//   so svm_a.rank_key=0, svm_b.rank_key=1.
+//   select best → svm_a wins by insertion order.
+//
+// Expected report:
+//   Best model : svm_a (SVM)
+//   Overfitting analysis:
+//     svm_a  : OK  ← best
+//     svm_b  : OK
+//
+// Expected FINAL EVALUATION (svm_a on d.test):
+//   accuracy   : 0.7600
+//   f1         : 0.7500
+//   precision  : 0.7800
+//   recall     : 0.7400
+
+dataset d = load("data/x.csv");
+
+split d into train(0.70), validation(0.15), test(0.15);
+
+model SVM svm_a
+{
+    C = 2,
+    kernel = "rbf"
+}
+
+model SVM svm_b
+{
+    C = 2,
+    kernel = "rbf"
+}
+
+experiment e
+{
+    train svm_a on d.train;
+    train svm_b on d.train;
+
+    evaluate svm_a on d.validation;
+    evaluate svm_b on d.validation;
+
+    collect metrics [accuracy, precision, recall, f1];
+
+    analyze overfitting
+    {
+        threshold = 0.10;
+        underfit_max_acc = 0.55;
+    }
+
+    compare by accuracy higher_is_better;
+
+    exclude if overfit or underfit;
+
+    select best;
+}
+
+evaluate e.best on d.test;
+
+report r
+{
+    metrics = [accuracy, precision, recall, f1],
+    show = overfitting_analysis
+}

@@ -1,0 +1,30 @@
+// Single-letter identifiers (minimum valid identifier length).
+// EBNF: <identifier> ::= <letter> { <letter> | <digit> | "_" }
+// A single <letter> with no suffix is the shortest legal identifier.
+// Tests: dataset name "d", model name "m", experiment name "e", report name "r".
+
+dataset d = load("x.csv");
+
+split d into train(0.70), validation(0.15), test(0.15);
+
+model KNN m
+{
+    k = 5
+}
+
+experiment e
+{
+    train m on d.train;
+    evaluate m on d.validation;
+    collect metrics [accuracy];
+    compare by accuracy higher_is_better;
+    select best;
+}
+
+evaluate e.best on d.test;
+
+report r
+{
+    metrics = [accuracy],
+    show = overfitting_analysis
+}

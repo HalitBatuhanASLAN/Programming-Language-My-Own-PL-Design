@@ -249,8 +249,13 @@ class TypeChecker:
     def _collect_globals(self) -> None:
         """
         Single forward scan of all top-level declarations to populate the
-        three symbol sets.  This implements a 'declare-before-use' regime
-        (Sebesta §5.4.1) without requiring a separate pre-pass file.
+        three symbol sets.  Global declarations are collected in a forward
+        scan before checking begins — model and dataset names are visible
+        throughout the program regardless of textual position (hoisting
+        semantics).
+
+        After collection, R6 checks that no name appears in both
+        _declared_models and _declared_datasets.
         """
         for decl in self._program.declarations:
             if isinstance(decl, DatasetDeclNode):
@@ -259,6 +264,19 @@ class TypeChecker:
                 self._split_datasets.add(decl.dataset)
             elif isinstance(decl, ModelDeclNode):
                 self._declared_models.add(decl.name)
+
+        # R6 — name collision between datasets and models.
+        # Checked once after the full scan so every collision is reported,
+        # not just the first one encountered.
+        for name in self._declared_models & self._declared_datasets:
+            self._errors.append(AyarTypeError(
+                rule    = "R6-NameCollision",
+                message = (
+                    f"Name '{name}' is declared as both a dataset and a model. "
+                    f"Dataset and model names must be distinct."
+                ),
+                line    = None,   # hoisting: no single source line to blame
+            ))
 
     # ── Pass 2: recursive AST walk ─────────────────────────────────────────────
 

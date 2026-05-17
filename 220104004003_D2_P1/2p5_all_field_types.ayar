@@ -1,0 +1,38 @@
+// Model declaration exercising all four field value kinds in one block:
+//   int_literal    → leaf_size = 30
+//   float_literal  → tol = 0.001
+//   string_literal → weights = "distance"
+//   bool_literal   → verbose = true
+//
+// EBNF: <field_value> ::= <int_literal> | <float_literal>
+//                        | <string_literal> | <bool_literal>
+
+dataset d = load("data/all_types.csv");
+
+split d into train(0.70), validation(0.15), test(0.15);
+
+model KNN all_types_model
+{
+    k = 5,
+    leaf_size = 30,
+    tol = 0.001,
+    weights = "distance",
+    verbose = true
+}
+
+experiment e
+{
+    train all_types_model on d.train;
+    evaluate all_types_model on d.validation;
+    collect metrics [accuracy, f1];
+    compare by accuracy higher_is_better;
+    select best;
+}
+
+evaluate e.best on d.test;
+
+report r
+{
+    metrics = [accuracy, f1],
+    show = overfitting_analysis
+}

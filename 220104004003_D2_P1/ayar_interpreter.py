@@ -246,7 +246,7 @@ def simulate(model: ModelRecord, is_train_split: bool) -> Dict[str, float]:
         # k is usually 'k' or 'n_neighbors'; accept both field names.
         k = float(hp.get("k", hp.get("n_neighbors", 5)))
         # Higher k → accuracy decreases slightly (less memorisation).
-        acc = max(0.60, 0.95 - k * 0.02)
+        acc = max(0.60, 0.94 - k * 0.02)
 
     elif mt == "DecisionTree":
         max_depth = float(hp.get("max_depth", 5))
@@ -506,6 +506,12 @@ class Interpreter:
         # Export:  Γ[exp_name.best ↦ R']
         best_key = f"{node.name}.best"
         self._gamma[best_key] = self._R   # R' or None
+
+        # Export M snapshot into Γ so that report statements can look up
+        # this experiment's results by name, even after later experiments run.
+        # Key: exp_name.__metrics__  →  snapshot of M (dict[str, ModelResult])
+        metrics_key = f"{node.name}.__metrics__"
+        self._gamma[metrics_key] = dict(self._M)
 
         # Keep results accessible for the top-level report and evaluate stmts.
         self._last_experiment_M    = dict(self._M)
@@ -829,8 +835,14 @@ class Interpreter:
             Overfitting analysis:
               <model>  : OK / OVERFIT / UNDERFIT
 
-        Uses self._last_experiment_M and self._last_experiment_R which
-        are the M and R exported from the most recently executed experiment.
+        Lookup strategy (Fix P1 — multi-experiment correctness):
+          The report name is used as an experiment name to look up
+          Γ[name.__metrics__] and Γ[name.best].  If those keys exist, this
+          report belongs to experiment <name> and uses its own snapshot.
+          If they do not exist, fall back to the most recently executed
+          experiment's state (self._last_experiment_M / R), which is the
+          correct behaviour for single-experiment programs and for reports
+          that are named differently from their experiment.
         """
         # ── Parse report fields ───────────────────────────────────────────────
         requested_metrics: List[str] = []
@@ -842,9 +854,46 @@ class Interpreter:
             elif isinstance(rf, ReportFieldShowNode):
                 show_value = rf.value
 
-        # ── Retrieve last experiment state ────────────────────────────────────
-        best_name    = self._last_experiment_R
-        experiment_M = self._last_experiment_M
+        # ── Resolve experiment M and R ────────────────────────────────────────
+        # Strategy:
+        #  1. Direct match: Γ[report_name.__metrics__] — report named after exp.
+        #  2. Prefix scan:  find an experiment whose name is a leading substring
+        #     of the report name (e.g. report "iris_report" → exp "iris_exp"
+        #     both start with "iris_").  Use the longest matching prefix.
+        #  3. Fall back to the most recently completed experiment.
+        metrics_key = f"{node.name}.__metrics__"
+        best_key    = f"{node.name}.best"
+
+        if metrics_key in self._gamma:
+            # Case 1: report name == experiment name.
+            experiment_M: Dict[str, Any] = self._gamma[metrics_key]
+            best_name: Optional[str]     = self._gamma.get(best_key)
+        else:
+            # Case 2: scan for an experiment whose name shares the longest
+            # common prefix with this report name.
+            all_exp_keys = [k for k in self._gamma if k.endswith(".__metrics__")]
+            best_exp_key   = None
+            best_prefix_len = 0
+            report_lower    = node.name.lower()
+            for exp_key in all_exp_keys:
+                exp_name = exp_key[: -len(".__metrics__")]
+                exp_lower = exp_name.lower()
+                # Compute length of shared leading characters.
+                shared = sum(
+                    1 for a, b in zip(report_lower, exp_lower) if a == b
+                )
+                if shared > best_prefix_len:
+                    best_prefix_len = shared
+                    best_exp_key    = exp_key
+                    best_exp_name   = exp_name
+
+            if best_exp_key is not None and best_prefix_len > 0:
+                experiment_M = self._gamma[best_exp_key]
+                best_name    = self._gamma.get(f"{best_exp_name}.best")
+            else:
+                # Case 3: fall back to the most recently completed experiment.
+                experiment_M = self._last_experiment_M
+                best_name    = self._last_experiment_R
 
         # ── Header ────────────────────────────────────────────────────────────
         print(f"\n{'=' * (20 + len(node.name))}")
@@ -876,9 +925,7 @@ class Interpreter:
         # ── Overfitting analysis section ──────────────────────────────────────
         if show_value == "overfitting_analysis" and experiment_M:
             print("Overfitting analysis:")
-            # Use ranked order if available, otherwise alphabetical.
-            order = self._last_experiment_M.keys()
-            for name in order:
+            for name in experiment_M.keys():
                 result = experiment_M[name]
                 if result.overfit:
                     tag = "OVERFIT"

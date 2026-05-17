@@ -1,0 +1,30 @@
+// Report block with only the metrics field — no show field.
+// EBNF: <report_field_list> ::= <report_field> { "," <report_field> }
+// A single report_field is legal; "show" is optional by grammar.
+// The parser must accept this without expecting a second field.
+
+dataset d = load("data/minimal.csv");
+
+split d into train(0.70), validation(0.15), test(0.15);
+
+model NaiveBayes nb
+{
+    var_smoothing = 1
+}
+
+experiment e
+{
+    train nb on d.train;
+    evaluate nb on d.validation;
+    collect metrics [accuracy, f1];
+    compare by accuracy higher_is_better;
+    select best;
+}
+
+evaluate e.best on d.test;
+
+// Report with only the metrics field (no show):
+report metrics_only
+{
+    metrics = [accuracy, f1]
+}

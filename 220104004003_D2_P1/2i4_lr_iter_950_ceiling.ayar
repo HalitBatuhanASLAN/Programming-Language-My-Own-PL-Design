@@ -1,0 +1,67 @@
+// LogisticRegression with max_iter=950 — ceiling verification.
+// Formula: acc = min(0.72 + max_iter * 0.0002, 0.91)
+// With max_iter=950:
+//   raw = 0.72 + 950 * 0.0002 = 0.72 + 0.19 = 0.91
+//   acc = min(0.91, 0.91) = 0.91   ← ceiling exactly hit
+//
+// Derived metrics (eval split):
+//   f1        = 0.91 - 0.01 = 0.90
+//   precision = 0.91 + 0.01 = 0.92  → clipped to 0.92 (within [0,1])
+//   recall    = 0.91 - 0.01 = 0.90
+//
+// For contrast, lr_low (max_iter=10) shows the pre-ceiling behavior:
+//   raw = 0.72 + 10 * 0.0002 = 0.7220
+//   acc = 0.7220, f1=0.7120, precision=0.7320, recall=0.7120
+//
+// Expected FINAL EVALUATION (lr_950 wins — higher accuracy):
+//   accuracy   : 0.9100
+//   f1         : 0.9000
+//   precision  : 0.9200
+//   recall     : 0.9000
+
+dataset d = load("data/x.csv");
+
+split d into train(0.70), validation(0.15), test(0.15);
+
+model LogisticRegression lr_950
+{
+    max_iter = 950,
+    solver = "lbfgs"
+}
+
+model LogisticRegression lr_low
+{
+    max_iter = 10,
+    solver = "lbfgs"
+}
+
+experiment e
+{
+    train lr_950 on d.train;
+    train lr_low on d.train;
+
+    evaluate lr_950 on d.validation;
+    evaluate lr_low on d.validation;
+
+    collect metrics [accuracy, precision, recall, f1];
+
+    analyze overfitting
+    {
+        threshold = 0.10;
+        underfit_max_acc = 0.55;
+    }
+
+    compare by accuracy higher_is_better;
+
+    exclude if overfit or underfit;
+
+    select best;
+}
+
+evaluate e.best on d.test;
+
+report r
+{
+    metrics = [accuracy, precision, recall, f1],
+    show = overfitting_analysis
+}

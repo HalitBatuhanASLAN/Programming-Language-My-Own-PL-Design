@@ -1,0 +1,9 @@
+// Code before the block comment — this line is a valid single-line comment.
+dataset iris = load("iris.csv");
+
+/* This is a multi-line block comment.
+   It spans four lines.
+   The ayar lexer only knows // comments.
+   This should be a LexicalError. */
+
+split iris into train(0.70), validation(0.15), test(0.15);

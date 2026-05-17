@@ -1,0 +1,39 @@
+// SVM with C=0 — exercises the formula floor.
+// Formula: acc = min(0.70 + C * 0.03, 0.94)
+// With C=0:  acc = min(0.70 + 0, 0.94) = min(0.70, 0.94) = 0.70
+// Derived metrics (eval split, is_train_split=False):
+//   f1        = acc - 0.01 = 0.69
+//   precision = acc + 0.02 = 0.72
+//   recall    = acc - 0.02 = 0.68
+// Expected FINAL EVALUATION output:
+//   accuracy   : 0.7000
+//   f1         : 0.6900
+//   precision  : 0.7200
+//   recall     : 0.6800
+
+dataset d = load("data/x.csv");
+
+split d into train(0.70), validation(0.15), test(0.15);
+
+model SVM svm_zero_c
+{
+    C = 0,
+    kernel = "linear"
+}
+
+experiment e
+{
+    train svm_zero_c on d.train;
+    evaluate svm_zero_c on d.validation;
+    collect metrics [accuracy, precision, recall, f1];
+    compare by accuracy higher_is_better;
+    select best;
+}
+
+evaluate e.best on d.test;
+
+report r
+{
+    metrics = [accuracy, precision, recall, f1],
+    show = overfitting_analysis
+}

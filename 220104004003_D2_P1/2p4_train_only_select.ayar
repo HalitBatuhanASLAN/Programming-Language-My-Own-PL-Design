@@ -1,0 +1,23 @@
+// Experiment block containing only: train + select best.
+// No evaluate, no collect, no compare, no analyze, no exclude.
+// The grammar allows { <experiment_stmt>* } — any combination is legal.
+// Parser stress: select best is reached with M populated by train only,
+// and with no ranked_order set (compare never ran).
+// The interpreter falls back to dict insertion order for select.
+
+dataset d = load("data/quick.csv");
+
+split d into train(0.80), validation(0.10), test(0.10);
+
+model KNN m
+{
+    k = 7
+}
+
+experiment bare_exp
+{
+    train m on d.train;
+    select best;
+}
+
+evaluate bare_exp.best on d.test;

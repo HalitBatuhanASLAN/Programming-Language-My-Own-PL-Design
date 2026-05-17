@@ -1,0 +1,31 @@
+// All four metric literals used in a single collect statement.
+// Verifies that the lexer emits METRIC_LITERAL for each of:
+//   accuracy  precision  recall  f1
+// and that the parser accepts all four in one metric_list.
+
+dataset d = load("data/full.csv");
+
+split d into train(0.70), validation(0.15), test(0.15);
+
+model KNN m
+{
+    k = 3,
+    distance = "euclidean"
+}
+
+experiment e
+{
+    train m on d.train;
+    evaluate m on d.validation;
+    collect metrics [accuracy, precision, recall, f1];
+    compare by f1 higher_is_better;
+    select best;
+}
+
+evaluate e.best on d.test;
+
+report r
+{
+    metrics = [accuracy, precision, recall, f1],
+    show = overfitting_analysis
+}

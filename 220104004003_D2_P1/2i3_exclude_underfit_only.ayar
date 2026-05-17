@@ -1,0 +1,73 @@
+// exclude if underfit — only the underfit condition is listed.
+// No "or overfit" clause. Overfit models survive; only underfit ones are removed.
+//
+// Model configurations and expected tags (threshold=0.10, underfit_max_acc=0.80):
+//
+//   knn_small (k=3):
+//     eval_acc  = max(0.60, 0.94 - 3*0.02) = 0.88
+//     train_acc = 0.88 + 0.07              = 0.95
+//     gap       = 0.07   → overfit? 0.07 > 0.10 → NO
+//     underfit? 0.88 < 0.80 → NO
+//     tag: OK  → SURVIVES
+//
+//   knn_large (k=15):
+//     eval_acc  = max(0.60, 0.94 - 15*0.02) = max(0.60, 0.64) = 0.64
+//     train_acc = 0.64 + 0.07               = 0.71
+//     gap       = 0.07   → overfit? 0.07 > 0.10 → NO
+//     underfit? 0.64 < 0.80 → YES
+//     tag: UNDERFIT → EXCLUDED
+//
+// After exclude: M = {knn_small}.
+// select best → knn_small.
+// Expected FINAL EVALUATION (knn_small on d.test):
+//   accuracy   : 0.8800
+//   f1         : 0.8700
+//   precision  : 0.8900
+//   recall     : 0.8600
+
+dataset d = load("data/x.csv");
+
+split d into train(0.70), validation(0.15), test(0.15);
+
+model KNN knn_small
+{
+    k = 3,
+    distance = "euclidean"
+}
+
+model KNN knn_large
+{
+    k = 15,
+    distance = "euclidean"
+}
+
+experiment e
+{
+    train knn_small on d.train;
+    train knn_large on d.train;
+
+    evaluate knn_small on d.validation;
+    evaluate knn_large on d.validation;
+
+    collect metrics [accuracy, precision, recall, f1];
+
+    analyze overfitting
+    {
+        threshold = 0.10;
+        underfit_max_acc = 0.80;
+    }
+
+    compare by accuracy higher_is_better;
+
+    exclude if underfit;
+
+    select best;
+}
+
+evaluate e.best on d.test;
+
+report r
+{
+    metrics = [accuracy, precision, recall, f1],
+    show = overfitting_analysis
+}

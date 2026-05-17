@@ -1,0 +1,13 @@
+// split statement with integer literals instead of float literals.
+// EBNF: <split_part> ::= <split_role> "(" <float_literal> ")"
+// The parser explicitly checks for FLOAT_LITERAL and rejects INT_LITERAL.
+// Expected: ParseError — FLOAT_LITERAL expected, INT_LITERAL received.
+
+dataset d = load("data/x.csv");
+
+split d into train(1), validation(0), test(0);
+
+model KNN m
+{
+    k = 3
+}

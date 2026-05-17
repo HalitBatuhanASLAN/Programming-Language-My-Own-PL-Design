@@ -1,0 +1,58 @@
+// NaiveBayes in two separate experiments on two different datasets.
+// NaiveBayes formula is fixed (no hyperparameter affects accuracy):
+//   acc = 0.78, f1 = 0.76, precision = 0.79, recall = 0.75
+// Both experiments must produce identical metric values regardless
+// of which dataset is used — the formula does not read dataset ratios.
+//
+// Expected FINAL EVALUATION outputs (both on their respective .test splits):
+//   Experiment 1 (iris):  accuracy=0.7800  f1=0.7600
+//   Experiment 2 (wine):  accuracy=0.7800  f1=0.7600  (identical)
+
+dataset iris = load("data/iris.csv");
+dataset wine = load("data/wine.csv");
+
+split iris into train(0.70), validation(0.15), test(0.15);
+split wine into train(0.60), validation(0.20), test(0.20);
+
+model NaiveBayes nb_iris
+{
+    var_smoothing = 1
+}
+
+model NaiveBayes nb_wine
+{
+    var_smoothing = 1
+}
+
+experiment iris_exp
+{
+    train nb_iris on iris.train;
+    evaluate nb_iris on iris.validation;
+    collect metrics [accuracy, f1];
+    compare by accuracy higher_is_better;
+    select best;
+}
+
+experiment wine_exp
+{
+    train nb_wine on wine.train;
+    evaluate nb_wine on wine.validation;
+    collect metrics [accuracy, f1];
+    compare by accuracy higher_is_better;
+    select best;
+}
+
+evaluate iris_exp.best on iris.test;
+evaluate wine_exp.best on wine.test;
+
+report iris_report
+{
+    metrics = [accuracy, f1],
+    show = overfitting_analysis
+}
+
+report wine_report
+{
+    metrics = [accuracy, f1],
+    show = overfitting_analysis
+}

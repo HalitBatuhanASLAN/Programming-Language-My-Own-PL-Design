@@ -1,0 +1,36 @@
+// Two datasets declared; only one is split.
+// The experiment trains and evaluates on the unsplit dataset.
+// Expected: R2-UnsplitDataset errors for every reference to extra.train
+//           and extra.validation.
+// The other dataset (iris) is split correctly and should produce no error.
+
+dataset iris = load("data/iris.csv");
+dataset extra = load("data/extra.csv");
+
+// Only iris is split; extra is never split.
+split iris into train(0.70), validation(0.15), test(0.15);
+
+model KNN iris_knn
+{
+    k = 3
+}
+
+model DecisionTree extra_dt
+{
+    max_depth = 5
+}
+
+experiment mixed_exp
+{
+    // iris references are valid (iris is split)
+    train iris_knn on iris.train;
+    evaluate iris_knn on iris.validation;
+
+    // extra references are invalid (extra was never split)
+    train extra_dt on extra.train;
+    evaluate extra_dt on extra.validation;
+
+    collect metrics [accuracy];
+    compare by accuracy higher_is_better;
+    select best;
+}

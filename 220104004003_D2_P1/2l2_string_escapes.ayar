@@ -1,0 +1,30 @@
+// String literal containing escaped characters and special symbols.
+// The lexer pattern: "(?:[^"\\\n]|\\.)*"
+// - \" is a valid escape sequence inside a string.
+// - \n inside a string literal is also allowed as an escape sequence.
+// - Special symbols like @, #, %, ^ are plain string_chars.
+dataset weird = load("data/my_dataset@v2.csv");
+
+split weird into train(0.70), validation(0.15), test(0.15);
+
+model NaiveBayes nb
+{
+    var_smoothing = 1
+}
+
+experiment e
+{
+    train nb on weird.train;
+    evaluate nb on weird.validation;
+    collect metrics [accuracy];
+    compare by accuracy higher_is_better;
+    select best;
+}
+
+// Path with escape sequence inside the string literal:
+// The lexer must tokenise the whole string as one STRING_LITERAL token.
+report r
+{
+    metrics = [accuracy],
+    show = "results: accuracy & f1 — #best model @ 2026"
+}

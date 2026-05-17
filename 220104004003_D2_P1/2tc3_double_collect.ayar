@@ -1,0 +1,38 @@
+// collect metrics called TWICE in the same experiment.
+// The grammar allows { <experiment_stmt>* } with no uniqueness constraint,
+// so the parser accepts two collect statements.
+// The type checker: _visit_collect overwrites self._current_collected_metrics
+// on each call, so the second collect replaces the first.
+// The compare statement sees only the second collect's list.
+//
+// First  collect: [accuracy, f1]
+// Second collect: [precision, recall]
+// compare by accuracy → R4-UncollectedMetric (accuracy not in [precision, recall])
+//
+// Expected: R4-UncollectedMetric for 'accuracy' (overwritten by second collect).
+//
+// Interpreter effect (if type check were bypassed): the second _exec_collect_stmt
+// re-restricts metrics from {accuracy, f1} to {k: v if k in [precision,recall]}
+// = {} (empty intersection) — a latent interpreter bug exposed by this test.
+
+dataset d = load("data/x.csv");
+
+split d into train(0.70), validation(0.15), test(0.15);
+
+model KNN m
+{
+    k = 3
+}
+
+experiment e
+{
+    train m on d.train;
+    evaluate m on d.validation;
+
+    collect metrics [accuracy, f1];
+    collect metrics [precision, recall];
+
+    compare by accuracy higher_is_better;
+
+    select best;
+}

@@ -1,0 +1,105 @@
+// Two independent experiment blocks in one program.
+// Each experiment has its own dataset, split, model set, and report.
+// Exercises that the parser accumulates multiple top-level declarations
+// without confusing namespaces.
+
+// ── Dataset A ──────────────────────────────────────────────────────────
+dataset iris = load("data/iris.csv");
+
+split iris into train(0.70), validation(0.15), test(0.15);
+
+// ── Dataset B ──────────────────────────────────────────────────────────
+dataset wine = load("data/wine.csv");
+
+split wine into train(0.60), validation(0.20), test(0.20);
+
+// ── Models for experiment A ────────────────────────────────────────────
+model KNN iris_knn
+{
+    k = 3,
+    distance = "euclidean"
+}
+
+model DecisionTree iris_dt
+{
+    max_depth = 8,
+    criterion = "gini"
+}
+
+// ── Models for experiment B ────────────────────────────────────────────
+model SVM wine_svm
+{
+    C = 5,
+    kernel = "rbf"
+}
+
+model LogisticRegression wine_lr
+{
+    max_iter = 300,
+    solver = "lbfgs"
+}
+
+// ── Experiment A ───────────────────────────────────────────────────────
+experiment iris_exp
+{
+    train iris_knn on iris.train;
+    train iris_dt  on iris.train;
+
+    evaluate iris_knn on iris.validation;
+    evaluate iris_dt  on iris.validation;
+
+    collect metrics [accuracy, f1];
+
+    analyze overfitting
+    {
+        threshold = 0.10;
+        underfit_max_acc = 0.55;
+    }
+
+    compare by f1 higher_is_better;
+
+    exclude if overfit or underfit;
+
+    select best;
+}
+
+// ── Experiment B ───────────────────────────────────────────────────────
+experiment wine_exp
+{
+    train wine_svm on wine.train;
+    train wine_lr  on wine.train;
+
+    evaluate wine_svm on wine.validation;
+    evaluate wine_lr  on wine.validation;
+
+    collect metrics [accuracy, precision, recall, f1];
+
+    analyze overfitting
+    {
+        threshold = 0.10;
+        underfit_max_acc = 0.55;
+    }
+
+    compare by accuracy higher_is_better;
+
+    exclude if overfit or underfit;
+
+    select best;
+}
+
+// ── Top-level evaluations ──────────────────────────────────────────────
+evaluate iris_exp.best on iris.test;
+evaluate wine_exp.best on wine.test;
+
+// ── Reports ───────────────────────────────────────────────────────────
+report iris_report
+{
+    metrics = [accuracy, f1],
+    show = overfitting_analysis
+}
+
+report wine_report
+{
+    metrics = [accuracy, precision, recall, f1],
+    show = overfitting_analysis
+}
