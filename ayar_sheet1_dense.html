@@ -1,0 +1,151 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.pg{width:100%;padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:5px;font-family:var(--font-mono);font-size:10.5px;line-height:1.42;color:var(--color-text-primary)}
+.s{border:1px solid var(--color-border-primary);border-radius:3px;padding:5px 6px;background:var(--color-background-primary)}
+.s.full{grid-column:1/-1}
+.sh{font-size:9.5px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--color-border-tertiary);padding-bottom:2px;margin-bottom:4px;color:var(--color-text-secondary)}
+.sb{font-size:10.5px;font-weight:500;margin:4px 0 2px;color:var(--color-text-primary)}
+.r{font-family:var(--font-mono);font-size:9.5px;background:var(--color-background-secondary);border-radius:2px;padding:1px 3px}
+.rb{font-family:var(--font-mono);font-size:9px;background:var(--color-background-secondary);border-radius:2px;padding:3px 5px;display:block;margin:2px 0;white-space:pre;line-height:1.5}
+p{margin:1px 0;font-size:10.5px}
+li{margin-left:13px;font-size:10.5px;margin-bottom:1px}
+.sep{border-top:1px dashed var(--color-border-tertiary);margin:3px 0}
+table{width:100%;border-collapse:collapse;font-size:9.5px}
+th{background:var(--color-background-tertiary);padding:2px 4px;font-weight:500;text-align:left;border:1px solid var(--color-border-tertiary)}
+td{padding:2px 4px;border:1px solid var(--color-border-tertiary);vertical-align:top}
+.q{font-size:10px;font-weight:500;margin:3px 0 1px;border-left:2px solid var(--color-border-primary);padding-left:5px}
+.a{font-size:10px;margin:0 0 3px 7px;color:var(--color-text-secondary)}
+.dim{color:var(--color-text-secondary);font-size:9px}
+.hl{font-weight:500}
+</style>
+<div class="pg">
+
+<div class="s full" style="padding:3px 7px">
+<span style="font-weight:500;font-size:11.5px">SHEET 1 / 3 — Type System · Strong Typing · Name vs Structural Equiv · Coercion · State Triple · E-ExperimentBlock · R1–R5 · Pipeline</span>
+<span class="dim" style="float:right;margin-top:1px">CSE 341 Ayar · Part 2 Exam</span>
+</div>
+
+<div class="s">
+<div class="sh">Primitive Types (Sebesta §6.1–6.2)</div>
+<table>
+<tr><th>Type</th><th>Value set</th><th>Used for</th></tr>
+<tr><td>int</td><td>ℤ</td><td>k=3, max_depth=5, leaf_size=30</td></tr>
+<tr><td>float</td><td>ℝ</td><td>train(0.70), threshold=0.08</td></tr>
+<tr><td>bool</td><td>{true,false}</td><td>model fields, overfitting tags</td></tr>
+<tr><td><b>metric</b></td><td><b>ℝ — name-distinct from float</b></td><td>accuracy precision recall f1</td></tr>
+</table>
+<p style="margin-top:3px"><b>metric and float: IDENTICAL underlying rep (ℝ) but DIFFERENT TYPE NAMES → name equivalence forces them apart. This is the single most important design decision in Ayar.</b></p>
+
+<div class="sep"></div>
+<div class="sh">Strong Typing (§6.12) — 3 enforcement points</div>
+<li><b>① metric ≠ float</b> → TYPE CHECKER, Rule R3 — BinOpNode with MetricLiteralNode rejected</li>
+<li><b>② Model field type</b> → PARSER — <span class="r">&lt;field_value&gt;</span> only int|float|str|bool — metric forbidden here syntactically</li>
+<li><b>③ Dataset ref type</b> → PARSER — <span class="r">&lt;dataset_ref&gt; ::= id '.' split_role</span> — bare model name cannot match</li>
+<p style="margin-top:2px">Detecting accuracy+0.5 at PARSE time (not type-check time) <b>STRENGTHENS §6.12</b> — strong typing only requires detection, not specification of when.</p>
+
+<div class="sep"></div>
+<div class="sh">Name vs Structural Equivalence (§6.14)</div>
+<table>
+<tr><th>Rule</th><th>metric+float</th><th>accuracy+0.5</th><th>Two KNN exps</th></tr>
+<tr><td>Structural</td><td>Same (ℝ=ℝ) → no error</td><td>Allowed</td><td>Interchangeable</td></tr>
+<tr><td><b>Name (AYAR)</b></td><td><b>TYPE ERROR</b></td><td><b>Type Error (R3)</b></td><td><b>NOT interchangeable</b></td></tr>
+</table>
+<p style="margin-top:2px">Design rationale (D1 §4.8): threshold 0.06 (float) vs accuracy 0.99 (metric) look numerically identical — semantically catastrophic if mixed. Name eq draws a hard line.</p>
+<p>iris_exp.best vs titanic_exp.best: CANNOT substitute even if both hold identical KNN config. Experiment name is its identity (§6.5–6.7 structured type, name equiv applies to records too).</p>
+<p>Trade-off accepted: user who genuinely wants metric in numeric computation cannot — no explicit conversion mechanism exists. Intentional — such conversions should always be explicit and visible.</p>
+
+<div class="sep"></div>
+<div class="sh">Coercion (§7.4) — ONE implicit rule</div>
+<li>ALLOWED: int → float (widening) only — Python numeric promotion at BinOpNode eval in interpreter</li>
+<li>FORBIDDEN: float→int (no narrowing) / metric→float (name eq blocks) / bool→int</li>
+<p>WHERE implemented: NOT in TypeChecker (no T⊢e:τ judgement rules). Grounded in INTERPRETER via Python widening. D1 §4.5 = design intent; §4.7 = formal grounding.</p>
+<p>Follows Java / §7.4: widen freely, never narrow silently.</p>
+
+<div class="sep"></div>
+<div class="sh">State Triple σ = (Γ, M, R) — Sebesta §3.5</div>
+<li><b>Γ</b> = Name → Value — global env: datasets &amp; models</li>
+<li><b>M</b> = ModelName → MetricMap — training results (stack-dynamic, DISCARDED at block exit)</li>
+<li><b>R</b> = ModelName | ⊥ — best selection; ⊥ until select best fires</li>
+<p>MetricMap = MetricName → ℝ where MetricName ∈ {accuracy, precision, recall, f1}</p>
+
+<div class="sep"></div>
+<div class="sh">E-ExperimentBlock — THE BUG + FIX (Part 1→Part 2)</div>
+<span class="rb">BUGGY (Part 1):
+⟨exp name {s₁…sₙ}, (Γ,M,R)⟩ → (Γ[name.best↦R'], M', ⊥)  ← M' LEAKED!
+
+FIXED (Part 2):
+⟨exp name {s₁…sₙ}, (Γ,M,R)⟩ → (Γ[name.best↦R'], M,  ⊥)</span>
+<p>WHY: M is stack-dynamic (§5.8.2) — internal metric data must be DISCARDED when block closes. Only exp_name.best survives via export to Γ. Outer M restored unchanged.</p>
+<p>IMPL: block entry → <span class="r">self._M = {}</span> | exit → <span class="r">self._gamma['e.best'] = self._R</span> (M never written back)</p>
+<p>Found via AI consistency audit (D4 Entry #1) — formal rule directly contradicted its own prose explanation. Caught by cross-referencing §4.4 rule against §4.6 stack-dynamic lifetime declaration.</p>
+</div>
+
+<div class="s">
+<div class="sh">Type Checker Rules R1–R5 (all checked BEFORE execution)</div>
+<table>
+<tr><th>Rule</th><th>Name</th><th>What / Where fails</th></tr>
+<tr><td>R1</td><td>UndeclaredModel</td><td>model_name in train/evaluate must be in Γ. Two-pass TC: Pass 1 collects globals, Pass 2 enforces rules.</td></tr>
+<tr><td>R2</td><td>UnsplitDataset</td><td>dataset_ref must be declared AND split. Fires <b>per-reference</b> — valid and invalid refs can coexist.</td></tr>
+<tr><td>R3</td><td>MetricInArith</td><td>MetricLiteralNode in BinOpNode → rejected. <b>DEAD CODE</b> under current grammar — parser already blocks it. Only triggerable via synthetic hand-crafted AST. Documents intent for future grammar extensions.</td></tr>
+<tr><td>R4</td><td>UncollectedMetric</td><td>metric in <span class="r">compare by X</span> must appear in <span class="r">collect metrics [...]</span> of SAME experiment block. Fires <b>BEFORE training</b>.</td></tr>
+<tr><td>R5</td><td>DataLeakage</td><td><span class="r">train on dataset.test</span> → DataLeakageError. <b>Covers TRAIN only — NOT top-level evaluate.</b></td></tr>
+</table>
+<p style="margin-top:2px">TypeChecker class: <b>AyarTypeError</b> (NOT TypeError — shadows Python built-in → confusing tracebacks). Renamed at all 9 call sites.</p>
+
+<div class="sep"></div>
+<div class="sh">Supporting Rules Added in Part 2</div>
+<p>WHY: E-Train precondition <span class="r">dataset_ref ∈ dom(Γ)</span> was formally ungrounded without E-DatasetDecl. No rule established how dataset name enters Γ — precondition formally unprovable.</p>
+<span class="rb">E-DatasetDecl:
+  path ∈ String, id ∉ dom(Γ)
+  ⊢ dataset id=load(path) → (Γ[id↦DatasetRecord(path)], M, R)
+
+E-SplitStmt:
+  id ∈ dom(Γ), r₁+r₂+r₃=1.0
+  ⊢ split id into train(r₁),val(r₂),test(r₃)
+  → (Γ[id.train↦r₁, id.val↦r₂, id.test↦r₃], M, R)</span>
+<p>WHY NOT add report_stmt/top-level eval_stmt rules? Handout allows only 2 constructs. Those have no unfulfilled preconditions in existing rules → adding them over-specifies and creates unnecessary obligations.</p>
+
+<div class="sep"></div>
+<div class="sh">Compare–Exclude–Select Pipeline</div>
+<li><b>P-AnalyzeOverfitting:</b> TAGS models {overfit, underfit}. NO removal. overfit(n) ⟺ M(n)(train_acc) − M(n)(val_acc) &gt; threshold | underfit(n) ⟺ M(n)(val_acc) &lt; underfit_max_acc</li>
+<li><b>P-Compare:</b> ranked = sort(dom(M), by metric, order direction)</li>
+<li><b>P-Exclude:</b> M' = {n | ¬overfit(n) ∧ ¬underfit(n)}</li>
+<li><b>P-SelectBest SUCCESS:</b> dom(M')≠∅ → best_name = first(ranked(M')) → R = best_name</li>
+<li><b>P-SelectBest FAILURE:</b> dom(M')=∅ → NoEligibleModelError (loud failure §1.3.3 reliability)</li>
+<p><b>TWO-STEP design (tag then filter):</b> P-AnalyzeOverfitting tags but does not remove. P-Exclude filters using those tags. Reason: separates concern of analysis (what is the model's fitness status?) from concern of policy (which models eliminate?). Readable independently. Consistent with E-Sequence sequential structure — tagging must precede filtering in state; combined rule would hide this requirement.</p>
+<p><b>eval_accuracy field:</b> separate field in ModelResult, NEVER touched by E-Collect. Without it: after <span class="r">collect metrics [f1,precision]</span>, analyze reads <span class="r">metrics.get('accuracy',0.0)=0.0</span> → tags ALL as underfit. Real bug found during stress testing with sample_2.ayar.</p>
+
+<div class="sep"></div>
+<div class="sh">Design Decisions Q&amp;A (Part 2 focus)</div>
+
+<div class="q">Q: Why choose name equivalence for metric over structural?</div>
+<div class="a">A: Structural eq would treat metric and float as same (both ℝ) → accuracy+0.5 silently compiles → wrong model selected without any error. Name eq draws a hard line by type name alone regardless of representation. Trade-off: user cannot use metric in numeric computation directly — no explicit conversion mechanism. Intentional: such crossings should always be explicit and visible. (D1 §4.8)</div>
+
+<div class="q">Q: Why is R3 "defensive dead code" — and why keep it?</div>
+<div class="a">A: Grammar &lt;field_value&gt;::=int|float|str|bool never produces MetricLiteralNode in arithmetic position. Parser rejects accuracy+0.5 syntactically — TC never sees it. R3 is over-specification: the grammar already enforces what R3 checks semantically. Kept because if grammar were extended to allow expressions in field positions, R3 would activate correctly. It documents intent for future extensions.</div>
+
+<div class="q">Q: Why is int→float coercion NOT in the TypeChecker?</div>
+<div class="a">A: D2 TypeChecker does not implement a formal T⊢e:τ judgement system — it checks structural constraints (is this model declared?), not expression types. Coercion is stated as design intent in §4.5 and grounded in the interpreter via Python's own numeric widening at BinOpNode eval. Scope decision consistent with handout requirements.</div>
+
+<div class="q">Q: evaluate e.best on d.train — DataLeakageError?</div>
+<div class="a">A: NO. R5 only covers TRAIN statements using .test split. Top-level evaluate on d.train is syntactically valid, passes all 5 type rules, and runs to completion. Result will have inflated metrics (model evaluated on its own training data) but Ayar does not detect this as an error by design — DataLeakage is defined only for training on test split.</div>
+
+<div class="q">Q: What was wrong in the original E-ExperimentBlock and why is the fix semantically correct?</div>
+<div class="a">A: Original wrote M' in output state — experiment-internal metric data would propagate to outer scope, contradicting both the prose "M' is not propagated" and §4.6 stack-dynamic lifetime. Fix restores outer M unchanged, discarding inner M'. Only R' (best selection) escapes via exp_name.best key in Γ. Found via AI audit cross-referencing formal rule against prose.</div>
+
+<div class="q">Q: Why is the experiment record structured type described with name equivalence?</div>
+<div class="a">A: Two experiment blocks with identical internal structures are NOT interchangeable. iris_exp.best and titanic_exp.best are different Γ keys. Name equivalence: the experiment name is the type identity — prevents accidental result substitution across experiments. (§6.5–6.7, §6.14)</div>
+
+<div class="q">Q: Three-step logical chain for metric≠float enforcement:</div>
+<div class="a">A: (1) Name equivalence → metric≠float regardless of identical ℝ representation — different names = different types. (2) No coercion rule metric→float exists (§4.7 permits only int→float). (3) All arithmetic and relational operators require operand-type identity — since metric≠float and no coercion closes the gap, any expression mixing them is rejected.</div>
+
+<div class="q">Q: Why is assignment a statement not an expression in Ayar?</div>
+<div class="a">A: Reliability and readability (§1.3.1, §1.3.3). C-style if(x=0) confusion is a well-known bug source. Ayar target users are ML researchers not PL specialists — confusion between assignment and comparison could cause wrong model selection. Assignment as statement: only in model field declarations (k=3) and analyze fields (threshold=0.08). Cannot appear inside expressions. Trade-off: no chained assignment, no assignment-in-expression shortcuts. (§7.7)</div>
+
+<div class="q">Q: Why no short-circuit boolean evaluation in Ayar?</div>
+<div class="a">A: Expressions in Ayar have NO side effects whatsoever — short-circuit semantics derive value only when evaluating second operand has a side effect that should be skipped. In exclude if overfit or underfit, both tags are pre-computed Booleans already available. Full evaluation: behavior completely predictable regardless of operand order → supports reliability (§1.3.3). Trade-off: if conditions become computationally expensive in future extension, full eval wastes work. (§7.6)</div>
+
+</div>
+
+</div>

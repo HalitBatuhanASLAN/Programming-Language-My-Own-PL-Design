@@ -1,0 +1,65 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// sample_1.ayar
+// DESCRIPTION : Iris flower classification — KNN vs DecisionTree.
+// FEATURES    : dataset decl, split, 2 model types (int + string fields),
+//               full experiment pipeline (all 7 statement types),
+//               compare by f1 higher_is_better, dotted eval_target,
+//               report with overfitting_analysis.
+//
+// EXPECTED WINNER : dt_clf (DecisionTree)
+//   DecisionTree formula: accuracy = min(0.60 + max_depth*0.05, 0.92)
+//   With max_depth=8 → eval_acc=0.92, f1=0.90
+//   KNN formula: accuracy = max(0.60, 0.95 - k*0.02)
+//   With k=5 → eval_acc=0.85, f1=0.84
+//   Both models pass the overfitting check (gap=0.07, threshold=0.10).
+// ─────────────────────────────────────────────────────────────────────────────
+
+dataset iris = load("data/iris.csv");
+
+split iris into
+    train(0.70),
+    validation(0.15),
+    test(0.15);
+
+model KNN knn_clf
+{
+    k = 5,
+    distance = "euclidean"
+}
+
+model DecisionTree dt_clf
+{
+    max_depth = 8,
+    criterion = "gini"
+}
+
+experiment iris_exp
+{
+    train knn_clf on iris.train;
+    train dt_clf  on iris.train;
+
+    evaluate knn_clf on iris.validation;
+    evaluate dt_clf  on iris.validation;
+
+    collect metrics [accuracy, precision, recall, f1];
+
+    analyze overfitting
+    {
+        threshold = 0.10;
+        underfit_max_acc = 0.55;
+    }
+
+    compare by f1 higher_is_better;
+
+    exclude if overfit or underfit;
+
+    select best;
+}
+
+evaluate iris_exp.best on iris.test;
+
+report iris_report
+{
+    metrics = [accuracy, precision, recall, f1],
+    show    = overfitting_analysis
+}

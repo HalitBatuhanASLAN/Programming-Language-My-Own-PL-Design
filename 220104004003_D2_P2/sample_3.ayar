@@ -1,0 +1,91 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// sample_3.ayar
+// DESCRIPTION : Customer churn — all five model types, strict threshold.
+// FEATURES    : all 5 model types (KNN, DecisionTree, SVM, NaiveBayes,
+//               LogisticRegression), bool + float + string + int field values,
+//               threshold deliberately set below the fixed train-eval gap so
+//               that every model is tagged as overfit and excluded, exercising
+//               the NoEligibleModelError failure path of select best.
+//
+// EXPECTED OUTCOME : NoEligibleModelError (NOT a report)
+//   The _TRAIN_BONUS is 0.07 for every model, so train_acc - eval_acc = 0.07.
+//   threshold = 0.05 < 0.07 → every model satisfies overfit condition.
+//   After 'exclude if overfit', M is empty.
+//   'select best' then raises NoEligibleModelError per Rule P-SelectBest
+//   (failure case): dom(M') = ∅.
+// ─────────────────────────────────────────────────────────────────────────────
+
+dataset churn = load("data/customer_churn.csv");
+
+split churn into
+    train(0.70),
+    validation(0.10),
+    test(0.20);
+
+model KNN knn_churn
+{
+    k = 5,
+    distance = "euclidean"
+}
+
+model DecisionTree dt_churn
+{
+    max_depth = 10,
+    criterion = "entropy"
+}
+
+model SVM svm_churn
+{
+    C = 3,
+    kernel = "linear",
+    probability = false
+}
+
+model NaiveBayes nb_churn
+{
+    var_smoothing = 1
+}
+
+model LogisticRegression lr_churn
+{
+    max_iter = 150,
+    solver = "lbfgs",
+    verbose = false
+}
+
+experiment churn_exp
+{
+    train knn_churn on churn.train;
+    train dt_churn  on churn.train;
+    train svm_churn on churn.train;
+    train nb_churn  on churn.train;
+    train lr_churn  on churn.train;
+
+    evaluate knn_churn on churn.validation;
+    evaluate dt_churn  on churn.validation;
+    evaluate svm_churn on churn.validation;
+    evaluate nb_churn  on churn.validation;
+    evaluate lr_churn  on churn.validation;
+
+    collect metrics [accuracy, precision, recall, f1];
+
+    analyze overfitting
+    {
+        threshold = 0.05;
+        underfit_max_acc = 0.55;
+    }
+
+    compare by accuracy higher_is_better;
+
+    exclude if overfit;
+
+    select best;
+}
+
+evaluate churn_exp.best on churn.test;
+
+report churn_report
+{
+    metrics = [accuracy, precision, recall, f1],
+    show    = overfitting_analysis
+}

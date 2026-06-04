@@ -1,0 +1,13 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// invalid_4.ayar
+// DELIBERATE ERROR : The opening "{" is on the same line as the model header.
+//   The layout rule requires every "{" and "}" to be on its own line.
+// EXPECTED ERROR   : LayoutError – '{' must be on its own line
+// ─────────────────────────────────────────────────────────────────────────────
+
+dataset mnist = load("data/mnist.csv");
+
+model SVM svm_model {
+    C = 1,
+    kernel = "poly"
+}

@@ -1,0 +1,208 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.pg{width:100%;padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:5px;font-family:var(--font-mono);font-size:10.5px;line-height:1.42;color:var(--color-text-primary)}
+.s{border:1px solid var(--color-border-primary);border-radius:3px;padding:5px 6px;background:var(--color-background-primary)}
+.s.full{grid-column:1/-1}
+.sh{font-size:9.5px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--color-border-tertiary);padding-bottom:2px;margin-bottom:4px;color:var(--color-text-secondary)}
+.sb{font-size:10.5px;font-weight:500;margin:4px 0 2px}
+.r{font-family:var(--font-mono);font-size:9.5px;background:var(--color-background-secondary);border-radius:2px;padding:1px 3px}
+.rb{font-family:var(--font-mono);font-size:9px;background:var(--color-background-secondary);border-radius:2px;padding:3px 5px;display:block;margin:2px 0;white-space:pre;line-height:1.5}
+p{margin:1px 0;font-size:10.5px}
+li{margin-left:13px;font-size:10.5px;margin-bottom:1px}
+.sep{border-top:1px dashed var(--color-border-tertiary);margin:3px 0}
+table{width:100%;border-collapse:collapse;font-size:9.5px}
+th{background:var(--color-background-tertiary);padding:2px 4px;font-weight:500;text-align:left;border:1px solid var(--color-border-tertiary)}
+td{padding:2px 4px;border:1px solid var(--color-border-tertiary);vertical-align:top}
+.q{font-size:10px;font-weight:500;margin:3px 0 1px;border-left:2px solid var(--color-border-primary);padding-left:5px}
+.a{font-size:10px;margin:0 0 3px 7px;color:var(--color-text-secondary)}
+.dim{color:var(--color-text-secondary);font-size:9px}
+.hl{font-weight:500}
+.frag{border:1px solid var(--color-border-tertiary);border-radius:2px;margin:2px 0;padding:3px 4px}
+.fc{font-family:var(--font-mono);font-size:9px;color:var(--color-text-secondary)}
+.fv{font-size:10px;margin-top:1px}
+</style>
+<div class="pg">
+
+<div class="s full" style="padding:3px 7px">
+<span style="font-weight:500;font-size:11.5px">SHEET 3 / 3 — Failure Modes · Canonical Fragments · C2 Full Trace · Tokens · AST · simulate() · Quick Facts · Code Examples · Q&amp;A</span>
+<span class="dim" style="float:right;margin-top:1px">CSE 341 Ayar · Part 2 Exam</span>
+</div>
+
+<div class="s">
+<div class="sh">Failure Mode Decision Tree</div>
+<li><b>1. Lex fail?</b> → <span class="r">_myvar</span> (underscore start → LexicalError), unterminated string. <b>1e-9 LEXES fine (4 tokens) — parse fails!</b></li>
+<li><b>2. Layout fail (PRE-PARSE)?</b> → { or } on same line as header → LayoutError BEFORE parser. Separate validate_layout() pass.</li>
+<li><b>3. Parse fail?</b> → wrong token type, missing ;, INT in split ratio, comma in analyze, unknown model type, unknown top-level keyword, missing dotted eval_target</li>
+<li><b>4. Type-check fail?</b> → R1 undeclared model, R2 unsplit dataset, R3 metric-in-arith (dead code), R4 uncollected metric, R5 train-on-test</li>
+<li><b>5. Runtime fail?</b> → NoEligibleModelError (all excluded), DataLeakageError, r₁+r₂+r₃≠1.0</li>
+
+<div class="sep"></div>
+<div class="sh">10 Canonical Failure Fragments</div>
+
+<div class="frag">
+<div class="fc">compare by precision; but collect [accuracy, f1]</div>
+<div class="fv"><b>TYPE-CHECK</b> — R4-UncollectedMetric — precision ∉ [accuracy,f1]. Aborts BEFORE training.</div>
+</div>
+<div class="frag">
+<div class="fc">experiment e {  (brace same line)</div>
+<div class="fv"><b>PRE-PARSE</b> — LayoutError — { has non-brace token on same line. Parser never runs.</div>
+</div>
+<div class="frag">
+<div class="fc">evaluate e.best on d.train;  (top-level, after valid experiment)</div>
+<div class="fv"><b>SUCCEEDS</b> — R5 covers only TRAIN on .test. Evaluate on .train = valid. Inflated metrics but NOT an error.</div>
+</div>
+<div class="frag">
+<div class="fc">var_smoothing = 1e-9  in model block</div>
+<div class="fv"><b>PARSE-time</b> — 1e-9 → INT(1) ID(e) MINUS(-) INT(9). Parser expects , or } after INT(1), finds IDENTIFIER → ParseError.</div>
+</div>
+<div class="frag">
+<div class="fc">split d into train(0.50), validation(0.30), test(0.30)  (sum=1.10)</div>
+<div class="fv"><b>RUNTIME</b> — E-SplitStmt side condition r₁+r₂+r₃=1.0 violated.</div>
+</div>
+<div class="frag">
+<div class="fc">model KNN m {}  (zero fields)</div>
+<div class="fv"><b>PARSE</b> — &lt;field_list&gt;::=&lt;field&gt;{","&lt;field&gt;} requires ≥1 field.</div>
+</div>
+<div class="frag">
+<div class="fc">threshold = accuracy;  inside analyze block</div>
+<div class="fv"><b>PARSE</b> — &lt;analyze_field&gt; requires &lt;float_lit&gt;. accuracy = METRIC_LITERAL ≠ FLOAT_LITERAL → ParseError. TC never runs. (AI's E2: "motivationally correct but syntactically invalid")</div>
+</div>
+<div class="frag">
+<div class="fc">train m on d.test;  inside experiment</div>
+<div class="fv"><b>TYPE-CHECK</b> — R5-DataLeakage. Parser accepts (d.test is valid &lt;dataset_ref&gt;). TC catches it before execution. NOT parse-time — d.test is syntactically valid.</div>
+</div>
+<div class="frag">
+<div class="fc">split iris into train(0.7), validation(0.15), test(0.15)</div>
+<div class="fv"><b>SUCCEEDS</b> — 0.7 is valid FLOAT_LITERAL ([0-9]+\.[0-9]* allows trailing empty). Sums to 1.0.</div>
+</div>
+<div class="frag">
+<div class="fc">threshold=0.06, two models, _TRAIN_BONUS=0.07 → gap=0.07</div>
+<div class="fv"><b>RUNTIME</b> — 0.07&gt;0.06 → both tagged overfit → P-Exclude empties M → M'=∅ → P-SelectBest FAILURE → NoEligibleModelError. E-ExperimentBlock conclusion never reached.</div>
+</div>
+
+<div class="sep"></div>
+<div class="sh">Token list — split d into train(0.80), validation(0.10), test(0.10);</div>
+<span class="rb">KEYWORD(split) IDENTIFIER(d) KEYWORD(into)
+KEYWORD(train) SEP(() FLOAT(0.80) SEP()) SEP(,)
+KEYWORD(validation) SEP(() FLOAT(0.10) SEP()) SEP(,)
+KEYWORD(test) SEP(() FLOAT(0.10) SEP()) SEP(;)
+→ 18 tokens total</span>
+
+<div class="sep"></div>
+<div class="sh">simulate() formula — _TRAIN_BONUS = 0.07</div>
+<li>Training: base_acc + 0.07 bonus → train_acc always ~0.07 above val_acc</li>
+<li>KNN: <span class="r">max(0.60, min(0.88, 0.88 - 0.02*(k-3)))</span> — k=3:0.88, k=5:0.84, k=1:floor 0.60</li>
+<li>DTree: <span class="r">max(0.62, min(0.92, 0.75 + 0.015*(max_depth-3)))</span> — depth=8:0.90</li>
+<li>NoEligibleModelError: threshold &lt; 0.07. threshold=0.06 → 0.07&gt;0.06 → both overfit → M'=∅</li>
+<li>Safe: threshold≥0.08 (0.07 &lt; 0.08 → neither tagged overfit)</li>
+
+<div class="sep"></div>
+<div class="sh">Write-Code: Analyze block (most common trap)</div>
+<span class="rb">analyze overfitting
+{
+    threshold = 0.08;
+    underfit_max_acc = 0.55;
+}
+NO comma between fields. Each ends with ;. { on own line.</span>
+
+<div class="sep"></div>
+<div class="sh">5 Model Params Quick Reference</div>
+<span class="rb">KNN:   k=3, distance="euclidean", weights="uniform", leaf_size=30
+DTree: max_depth=5, criterion="gini", min_samples_split=4
+SVM:   C=1, kernel="rbf", degree=3, gamma=1
+NaiveBayes: var_smoothing=1
+LogReg: C=1, max_iter=100, solver="lbfgs", penalty="l2"</span>
+</div>
+
+<div class="s">
+<div class="sh">Full C2 Trace (train→collect→compare→select→evaluate)</div>
+<p>Program: dataset d; split d; model KNN m {k=5}; experiment e {train m on d.train; collect [accuracy]; compare by accuracy higher_is_better; select best;} evaluate e.best on d.test;</p>
+<div class="sb">AST:</div>
+<span class="rb">ExperimentDeclNode(name='e')
+  TrainStmt(model='m') → DatasetRef('d','train')
+  CollectStmt(metrics=['accuracy'])
+  CompareStmt(metric='accuracy', dir='higher_is_better')
+  SelectStmt(best)</span>
+<div class="sb">Type Check: R1✓ R2✓ R3✓ R4✓(accuracy in collect) R5✓(train on .train) → PASS</div>
+<p>No evaluate inside experiment before select best — NOT a type error. No type rule requires evaluate before select. E-Evaluate precondition model_name ∈ dom(M) only applies IF evaluate is called — it isn't here.</p>
+<div class="sb">Interpreter:</div>
+<span class="rb">self._M = {}                    ← allocate M (stack-dynamic)
+E-Train(m, d.train):
+  simulate(KNN{k=5}, d.train) → self._M['m'] = MetricResult(...)
+E-Collect([accuracy]):
+  restrict M to {accuracy} only
+  eval_accuracy field preserved separately! (bug fix)
+P-Compare(accuracy, higher_is_better):
+  ranked=['m']  (only one model, trivial sort)
+P-SelectBest SUCCESS:
+  dom(M)={m}≠∅ → self._R = 'm'
+block exit:
+  self._gamma['e.best'] = 'm'   ← export to Γ
+  M discarded (stack-dynamic)</span>
+<div class="sb">evaluate e.best on d.test:</div>
+<span class="rb">eval_target 'e.best' → self._gamma['e.best'] → 'm'
+→ self._gamma['m'] (KNN{k=5} config)
+→ eval_metrics(KNN{k=5}, d.test, prior_metrics)
+OUTPUT:
+=== FINAL EVALUATION: m on d.test ===
+  Model: m (KNN)  Split: d.test
+  accuracy:0.80  f1:0.79  precision:0.81  recall:0.78</span>
+
+<div class="sep"></div>
+<div class="sh">Quick Fact Table</div>
+<table>
+<tr><th>Fact</th><th>Answer</th></tr>
+<tr><td>Binding time of k=3</td><td>Runtime (elaboration)</td></tr>
+<tr><td>Binding time of + operator</td><td>Language design time</td></tr>
+<tr><td>Lifetime of iris_exp.best</td><td>Static — Γ from block-close until program end</td></tr>
+<tr><td>Lifetime of M inside exp</td><td>Stack-dynamic — entry→exit</td></tr>
+<tr><td>Assignment as expression?</td><td>NO — statement only</td></tr>
+<tr><td>Why E-Evaluate needs prior E-Train</td><td>Precondition model_name ∈ dom(M). M empty until E-Train.</td></tr>
+<tr><td>28/28 tests pass?</td><td>YES</td></tr>
+<tr><td>TypeChecker class name</td><td>AyarTypeError (NOT TypeError — shadows Python built-in)</td></tr>
+<tr><td>Layout rule enforced where</td><td>validate_layout() PRE-PARSE, not in EBNF</td></tr>
+<tr><td>iris_exp.best vs titanic_exp.best interchangeable?</td><td>NO — name eq on experiment records</td></tr>
+<tr><td>_last_experiment_M bug</td><td>Two exps: report showed last exp data. Fixed: M snapshot stored per exp in Γ.</td></tr>
+<tr><td>Block comment added when</td><td>Round 2 stress testing. /* */ with \n tracking.</td></tr>
+<tr><td>AyarTypeError rename</td><td>AI named it TypeError — shadows Python built-in. Renamed at all 9 call sites.</td></tr>
+</table>
+
+<div class="sep"></div>
+<div class="sh">Design Decision Q&amp;A (Exam-Focused)</div>
+
+<div class="q">Q: Why is the two-step tag-then-filter design (P-Analyze + P-Exclude) better than a single combined rule?</div>
+<div class="a">A: Separates concern of analysis (what is the model's fitness status?) from policy (which models to eliminate?). Reader can audit each independently — analyze block states thresholds, exclude statement states policy. Combined rule would fuse two distinct concerns into one opaque operation. §1.3.1 readability: self-contained statements each doing one thing are easier to review. E-Sequence sequential structure also requires tagging before filtering in state — combined rule would hide this ordering requirement.</div>
+
+<div class="q">Q: Why does Ayar fail LOUDLY with NoEligibleModelError instead of silently returning an overfit model?</div>
+<div class="a">A: Reliability priority (§1.3.3). In ML model selection, silently returning an overfit model would cause wrong conclusions about model quality — the user would trust a model that generalizes poorly. Loud failure (runtime error) forces the user to confront the problem: relax thresholds, add more models, or reconsider the experiment design. P-SelectBest failure case is a deliberate design decision documented in D1 §4.4.</div>
+
+<div class="q">Q: Why does data leakage detection happen at type-check time for TRAIN but not for top-level EVALUATE?</div>
+<div class="a">A: R5 is defined specifically for training on the test split — this is the classic data leakage scenario where future test data contaminates training. Top-level evaluate on any split is permitted because evaluating a final model on training data, while potentially misleading, is not a leakage violation by Ayar's definition. The distinction is deliberate: training uses test data → catastrophic leakage. Evaluating on training data → inflated metrics, but user's choice.</div>
+
+<div class="q">Q: Why is the experiment record NOT fully accessible from outside the block?</div>
+<div class="a">A: Encapsulation design decision (D1 §4.8). Internal metrics, overfitting tags, ranked ordering are implementation details of the pipeline. Allowing them to leak outward would make user code dependent on internal block details — any future change to how metrics are computed would break external code. Only best survives via export. Trade-off: user cannot access a specific model's validation accuracy from outside, making certain debugging scenarios harder. But Ayar's intent: good results obtained without needing to debug intermediate steps.</div>
+
+<div class="q">Q: Why does collect metrics restrict M but not delete eval_accuracy?</div>
+<div class="a">A: P-AnalyzeOverfitting reads train_acc and val_acc (stored as eval_accuracy) to compute the overfitting tag. If collect metrics [f1, precision] runs BEFORE analyze (which it does via E-Sequence), accuracy would be removed from M. Analyze then reads metrics.get('accuracy', 0.0) = 0.0 → 0.0 &lt; underfit_max_acc → ALL models tagged underfit. Bug discovered in sample_2.ayar stress test. Fix: eval_accuracy is a separate field in ModelResult, never touched by E-Collect.</div>
+
+<div class="q">Q: Why is the expression sub-language defined but never semantically formalized in §4.4?</div>
+<div class="a">A: Scope decision per handout (only 2 constructs required for formalization). The expression hierarchy (add_expr, mul_expr, etc.) exists in the grammar and parser but has no evaluation rules in §4.4. This left R3 as dead code — grammar prevents metric literals in arithmetic, so R3 can never fire on real parsed input. D5 retrospective: this is the main gap in the spec. A full implementation would need T⊢e:τ judgement rules and an expression evaluator in the interpreter.</div>
+
+<div class="q">Q: From Part 1 — what are the 3 DSL-specific constructs that prove Ayar is NOT a generic scripting language?</div>
+<div class="a">A: (1) compare by f1 higher_is_better — metric-aware ranked comparison, no generic language has this built-in as a statement. (2) exclude if overfit or underfit — domain-specific model fitness filtering using tags computed by the pipeline. (3) select best — automatic winner selection from ranked, filtered model set. Together: Compare–Exclude–Select is the DSL-identity construct. No generic scripting language (Python, JS, etc.) has these as first-class language constructs.</div>
+
+<div class="q">Q: Why is the or keyword in exclude if X or Y NOT the same or as in expressions?</div>
+<div class="a">A: exclude_condition has its OWN closed sub-grammar: &lt;exclude_condition&gt; ::= &lt;exclude_term&gt; { "or" &lt;exclude_term&gt; } where &lt;exclude_term&gt; ::= "overfit" | "underfit". If routed through &lt;expr&gt;, the or in exclude if overfit or underfit would parse as a general boolean expression — and then exclude if accuracy &gt; 0.5 would also be valid, which we don't want. Closed sub-grammar restricts domain to only the two legal conditions. E1 experiment AI caught the or keyword collision — you adopted the closed sub-grammar fix.</div>
+
+<div class="q">Q: BinOp tree for: accuracy &gt; 0.80 and f1 &gt;= 0.75</div>
+<div class="a">A: BinOp('and', BinOp('&gt;', MetricLit(accuracy), Lit(0.80)), BinOp('&gt;=', MetricLit(f1), Lit(0.75))). Process: 'and' at &lt;and_expr&gt; level. Each side resolved at &lt;rel_expr&gt; level (higher precedence = deeper nonterminal = resolved first). accuracy and f1 are MetricLiteralNodes — not IdentifierNodes. This matters for R3 in the type checker.</div>
+
+<div class="q">Q: Describe the scope chain lookup for model m referenced inside experiment e2, when m is declared globally.</div>
+<div class="a">A: Static (lexical) scoping lookup (§5.7): (1) Check e2's own inner scope — is m declared here? NO. (2) Move to global scope — is m declared here? YES (ModelDecl type=KNN name=m). Resolved. Same result whether called from e1 or e2 — source code readable, runtime-independent. If dynamic scoping: would follow call stack, not source structure — nondeterministic for two experiments sharing the name m.</div>
+
+<div class="q">Q: What is the lifetime of iris_exp.best after the experiment block closes? Where does it live?</div>
+<div class="a">A: After export: lives in Γ (global environment) under key 'iris_exp.best'. Lifetime = STATIC (§5.8.1) — bound when experiment block closes, persists until program terminates. Contrast with internal M: stack-dynamic, discarded at block exit. iris_exp.best is the only piece of experiment-internal state that escapes via E-ExperimentBlock's export conclusion.</div>
+
+</div>
+</div>

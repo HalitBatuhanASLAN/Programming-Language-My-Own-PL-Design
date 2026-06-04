@@ -1,0 +1,207 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.pg{font-family:var(--font-mono);font-size:10.5px;line-height:1.45;color:var(--color-text-primary);padding:8px;display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.s{border:1px solid var(--color-border-primary);border-radius:3px;padding:6px;background:var(--color-background-primary)}
+.s.full{grid-column:1/-1}
+.sh{font-size:9.5px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--color-border-tertiary);padding-bottom:2px;margin-bottom:4px;color:var(--color-text-secondary)}
+.rb{font-family:var(--font-mono);font-size:9px;background:var(--color-background-secondary);border-radius:2px;padding:3px 6px;display:block;margin:2px 0;white-space:pre;line-height:1.6}
+.r{font-family:var(--font-mono);font-size:9.5px;background:var(--color-background-secondary);border-radius:2px;padding:1px 3px}
+p{margin:1px 0;font-size:10.5px}
+li{margin-left:14px;font-size:10.5px;margin-bottom:2px}
+.sep{border-top:1px dashed var(--color-border-tertiary);margin:4px 0}
+table{width:100%;border-collapse:collapse;font-size:9.5px}
+th{background:var(--color-background-tertiary);padding:2px 5px;font-weight:500;text-align:left;border:1px solid var(--color-border-tertiary)}
+td{padding:2px 5px;border:1px solid var(--color-border-tertiary);vertical-align:top;font-family:var(--font-mono)}
+.hl{font-weight:500}
+.dim{color:var(--color-text-secondary);font-size:9px}
+.nb{font-weight:500;font-size:10px}
+</style>
+
+<div class="pg">
+
+<div class="s full" style="padding:4px 8px">
+<span style="font-weight:500;font-size:12px">simulate() — Tam Kaynak Kodu Analizi (ayar_interpreter.py)</span>
+<span class="dim" style="float:right;margin-top:2px">Option C: model-type formulas · _TRAIN_BONUS = 0.07</span>
+</div>
+
+<div class="s full">
+<div class="sh">Genel Mimari — simulate() nasıl çağrılır?</div>
+<p>simulate() iki yerde çağrılır: <b>_exec_train_stmt()</b> ve <b>_exec_evaluate_stmt()</b> (ve top-level _exec_eval_stmt()). İkisi de aynı fonksiyonu kullanır, tek fark <span class="r">is_train_split</span> parametresi.</p>
+<span class="rb">def simulate(model: ModelRecord, is_train_split: bool) -> Dict[str, float]:
+    hp = model.hyperparams   # field dict'i: {'k': 3, 'distance': 'euclidean', ...}
+    mt = model.model_type    # 'KNN', 'DecisionTree', 'SVM', 'NaiveBayes', 'LogisticRegression'
+
+    # ADIM 1: model tipine göre base accuracy hesapla (hyperparametreden)
+    acc = formula(hp, mt)
+
+    # ADIM 2: train split ise +0.07 bonus ekle
+    if is_train_split:
+        acc += _TRAIN_BONUS   # _TRAIN_BONUS = 0.07
+
+    # ADIM 3: [0.0, 1.0] arasına clip
+    acc = min(1.0, max(0.0, acc))
+
+    # ADIM 4: diğer 3 metriği acc'den model-spesifik offset ile türet
+    f1, precision, recall = derive(acc, mt)
+
+    return {'accuracy': clip(acc), 'f1': clip(f1), 'precision': clip(precision), 'recall': clip(recall)}</span>
+</div>
+
+<div class="s">
+<div class="sh">5 Model Formülü — Base Accuracy (Step 1)</div>
+
+<div class="nb">KNN:</div>
+<span class="rb">k = hp.get('k', hp.get('n_neighbors', 5))  # hem 'k' hem 'n_neighbors' kabul eder
+acc = max(0.60, 0.94 - k * 0.02)
+
+# k=1  → max(0.60, 0.94-0.02) = max(0.60, 0.92) = 0.92
+# k=3  → max(0.60, 0.94-0.06) = 0.88
+# k=5  → max(0.60, 0.94-0.10) = 0.84
+# k=10 → max(0.60, 0.94-0.20) = 0.74
+# k=20 → max(0.60, 0.94-0.40) = max(0.60, 0.54) = 0.60  ← floor'a çarpar
+# Mantık: yüksek k → smoother boundaries → daha az memorization → daha düşük acc</span>
+
+<div class="nb" style="margin-top:4px">DecisionTree:</div>
+<span class="rb">max_depth = hp.get('max_depth', 5)
+acc = min(0.60 + max_depth * 0.05, 0.92)
+
+# depth=1  → min(0.65, 0.92) = 0.65
+# depth=3  → min(0.75, 0.92) = 0.75
+# depth=5  → min(0.85, 0.92) = 0.85
+# depth=8  → min(1.00, 0.92) = 0.90  ← 0.92 ceiling'e yaklaşır
+# depth=10 → min(1.10, 0.92) = 0.92  ← ceiling'e çarpar
+# Mantık: derin ağaç → daha iyi fit → ama 0.92 hard cap (overfit modeli)</span>
+
+<div class="nb" style="margin-top:4px">SVM:</div>
+<span class="rb">C = hp.get('C', 1)
+acc = min(0.70 + C * 0.03, 0.94)
+
+# C=1   → min(0.73, 0.94) = 0.73
+# C=5   → min(0.85, 0.94) = 0.85
+# C=10  → min(1.00, 0.94) = 0.94  ← ceiling
+# C=0   → min(0.70, 0.94) = 0.70  ← floor
+# Mantık: yüksek C → az regularization → tighter fit → yüksek acc (ama overfit riski)</span>
+
+<div class="nb" style="margin-top:4px">NaiveBayes:</div>
+<span class="rb">acc = 0.78   # SABIT — hyperparameter etkisi yok
+# var_smoothing log-probability stability etkiliyor, accuracy'yi değil
+# f1=0.76, precision=0.79, recall=0.75 de sabit (diğer modellerin offset mantığından farklı)</span>
+
+<div class="nb" style="margin-top:4px">LogisticRegression:</div>
+<span class="rb">max_iter = hp.get('max_iter', 100)
+acc = min(0.72 + max_iter * 0.0002, 0.91)
+
+# max_iter=100  → min(0.74, 0.91) = 0.74
+# max_iter=300  → min(0.78, 0.91) = 0.78
+# max_iter=950  → min(0.91, 0.91) = 0.91  ← ceiling (2i4 test case tam bunu test ediyor)
+# max_iter=1000 → min(0.92, 0.91) = 0.91  ← 950+ ceiling'e çarpar
+# Mantık: daha fazla iterasyon → daha iyi convergence → yüksek acc</span>
+</div>
+
+<div class="s">
+<div class="sh">_TRAIN_BONUS Mekanizması (Step 2) — Neden 0.07?</div>
+<p>E-Train çağrıldığında <span class="r">is_train_split=True</span> → acc += 0.07</p>
+<p>E-Evaluate çağrıldığında <span class="r">is_train_split=False</span> → bonus yok</p>
+<p>Bu mekanizma şunu simüle eder: model kendi üzerinde eğitildiği veriyi daha iyi tanır → train accuracy her zaman ~0.07 yüksek olur.</p>
+<span class="rb">Örnek: KNN k=3
+  E-Train:    acc = 0.88 + 0.07 = 0.95  (train_accuracy = 0.95)
+  E-Evaluate: acc = 0.88 + 0.00 = 0.88  (eval_accuracy  = 0.88)
+  gap = 0.95 - 0.88 = 0.07
+
+threshold=0.06 → 0.07 > 0.06 → overfit = TRUE
+threshold=0.08 → 0.07 < 0.08 → overfit = FALSE</span>
+<p><b>CRITICAL:</b> gap her zaman tam olarak 0.07 çünkü _TRAIN_BONUS sabit. Threshold seçimi bu sabit gap'e göre yapılmalı.</p>
+
+<div class="sep"></div>
+<div class="sh">4 Metrik Türetme — Model-Spesifik Offsetler (Step 4)</div>
+<table>
+<tr><th>Model</th><th>f1</th><th>precision</th><th>recall</th></tr>
+<tr><td>KNN</td><td>acc − 0.01</td><td>acc + 0.01</td><td>acc − 0.02</td></tr>
+<tr><td>DecisionTree</td><td>acc − 0.02</td><td>acc (=acc)</td><td>acc − 0.03</td></tr>
+<tr><td>SVM</td><td>acc − 0.01</td><td>acc + 0.02</td><td>acc − 0.02</td></tr>
+<tr><td>NaiveBayes</td><td>0.76 (sabit)</td><td>0.79 (sabit)</td><td>0.75 (sabit)</td></tr>
+<tr><td>LogReg</td><td>acc − 0.01</td><td>acc + 0.01</td><td>acc − 0.01</td></tr>
+</table>
+<p style="margin-top:3px">Son adım: <span class="r">round(min(1.0, max(0.0, v)), 4)</span> — 4 ondalık basamağa yuvarlanır.</p>
+
+<div class="sep"></div>
+<div class="sh">ModelResult Struct — Hangi field nerede kullanılır</div>
+<span class="rb">@dataclass
+class ModelResult:
+    train_accuracy: float        # E-Train'den gelir, +0.07 bonus dahil
+                                 # P-AnalyzeOverfitting'de gap hesabında kullanılır
+    eval_accuracy:  float = 0.0  # E-Evaluate'ten gelir, bonus YOK
+                                 # ← E-Collect tarafından HİÇ dokunulmaz (bug fix!)
+                                 # P-AnalyzeOverfitting val_acc olarak bunu okur
+    overfit:  bool = False       # P-AnalyzeOverfitting tarafından set edilir
+    underfit: bool = False       # P-AnalyzeOverfitting tarafından set edilir
+    rank_key: float = 0.0        # P-Compare tarafından set edilir
+    metrics: Dict[str,float] = field(default_factory=dict)
+             # başta 4 metrik, E-Collect sonrası sadece seçilenler</span>
+<p><b>eval_accuracy neden ayrı?</b> E-Collect <span class="r">collect metrics [f1, precision]</span> derse metrics dict'ten accuracy silinir. Ama P-AnalyzeOverfitting val_acc olarak accuracy okumak zorunda. Eğer ayrı field olmasaydı → <span class="r">metrics.get('accuracy', 0.0)</span> = 0.0 → tüm modeller underfit olarak taglanırdı. Gerçek bug, sample_2.ayar ile bulundu.</p>
+
+<div class="sep"></div>
+<div class="sh">E-Train vs E-Evaluate farkı — kodda tam olarak nerede</div>
+<span class="rb">def _exec_train_stmt(self, node):
+    full_metrics = simulate(model_record, is_train_split=True)   # +0.07
+    if model_name not in self._M:
+        entry = ModelResult(
+            train_accuracy = full_metrics['accuracy'],  # 0.07 bonuslu
+            eval_accuracy  = full_metrics['accuracy'],  # şimdilik aynı
+            metrics        = dict(full_metrics),
+        )
+    else:
+        entry.train_accuracy = full_metrics['accuracy']  # update
+    self._M[model_name] = entry
+
+def _exec_evaluate_stmt(self, node):
+    eval_metrics = simulate(model_record, is_train_split=False)  # bonus yok
+    if model_name not in self._M:
+        entry = ModelResult(train_acc=eval_metrics['acc'], ...)   # train olmadan
+    else:
+        entry.eval_accuracy = eval_metrics['accuracy']  # eval_accuracy güncelle
+        entry.metrics       = dict(eval_metrics)        # metrics güncelle
+        # train_accuracy KORUNUR — overfit analizi için lazım!</span>
+
+<div class="sep"></div>
+<div class="sh">Tam Örnek: KNN k=3, threshold=0.06</div>
+<span class="rb">simulate(KNN{k=3}, is_train_split=True):
+  acc = max(0.60, 0.94 - 3*0.02) = max(0.60, 0.88) = 0.88
+  acc += 0.07  →  acc = 0.95
+  f1 = 0.95 - 0.01 = 0.94
+  precision = 0.95 + 0.01 = 0.96  → clip → 0.96
+  recall = 0.95 - 0.02 = 0.93
+  → ModelResult(train_accuracy=0.95, ...)
+
+simulate(KNN{k=3}, is_train_split=False):
+  acc = 0.88  (no bonus)
+  f1=0.87, precision=0.89, recall=0.86
+  → entry.eval_accuracy = 0.88
+
+P-AnalyzeOverfitting (threshold=0.06):
+  gap = train_accuracy - eval_accuracy = 0.95 - 0.88 = 0.07
+  0.07 > 0.06  →  overfit = TRUE
+
+P-AnalyzeOverfitting (threshold=0.08):
+  0.07 < 0.08  →  overfit = FALSE</span>
+</div>
+
+<div class="s full">
+<div class="sh">Exam-Critical: simulate() hakkında sorulabilecek her şey</div>
+<table>
+<tr><th>Soru</th><th>Cevap</th></tr>
+<tr><td>Neden Option C seçildi (hash yerine formula)?</td><td>Exam defensibility: "k artınca neden accuracy azalır?" sorusuna ML kavramıyla cevap verebilirsin. Hash'te "hash değişti" demek zorunda kalırsın. (D4 Entry #3)</td></tr>
+<tr><td>_TRAIN_BONUS neden 0.07?</td><td>Sabit seçildi — tüm model tiplerinde aynı gap üretmek için. Train-eval gap formülden değil bu sabit bonustan geliyor. Sınavda threshold &lt; 0.07 seçersen tüm modeller overfit.</td></tr>
+<tr><td>Hangi hyperparameter acc'yi etkiliyor?</td><td>KNN: k (ters orantı). DTree: max_depth (doğru orantı). SVM: C (doğru orantı). NaiveBayes: HİÇBİR ŞEYI etkilemiyor (sabit 0.78). LogReg: max_iter (doğru orantı).</td></tr>
+<tr><td>NaiveBayes neden sabit?</td><td>var_smoothing log-probability stability'yi etkiliyor, overall accuracy'yi değil. Bu gerçek ML bilgisi — sınavda savunulabilir.</td></tr>
+<tr><td>eval_accuracy neden ayrı field?</td><td>E-Collect metrics dict'ten accuracy'yi silebilir. P-AnalyzeOverfitting val_acc olarak her zaman accuracy'ye ihtiyaç duyar. Ayrı field = E-Collect'ten izole. Gerçek bug, sample_2'de bulundu.</td></tr>
+<tr><td>KNN k=5 ile train ve eval accuracy değerleri?</td><td>train: 0.94-0.10=0.84, +0.07=0.91. eval: 0.84. gap=0.07.</td></tr>
+<tr><td>DTree max_depth=10 ceiling'e çarpar mı?</td><td>0.60+10*0.05=1.10 → min(1.10, 0.92)=0.92. Evet, ceiling'e çarpar.</td></tr>
+<tr><td>LogReg max_iter=950 neden test case?</td><td>0.72+950*0.0002=0.72+0.19=0.91 → tam ceiling. 2i4_lr_iter_950_ceiling.ayar bu davranışı test ediyor.</td></tr>
+<tr><td>is_train_split nereden geliyor?</td><td>_exec_train_stmt: is_train_split = (dataset_ref.role == 'train'). Yani d.train → True, d.validation → False. Data leakage guard da buradan: train on d.test → R5 already caught by TC.</td></tr>
+<tr><td>simulate() neden pure function?</td><td>Deterministic — aynı ModelRecord + is_train_split → her zaman aynı sonuç. State değiştirmiyor. Interpreter state triple (Γ,M,R) üzerinde çalışan _exec_* metodları simulate()'i çağırır ve sonucu M'ye yazar.</td></tr>
+</table>
+</div>
+
+</div>

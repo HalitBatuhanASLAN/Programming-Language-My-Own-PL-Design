@@ -1,0 +1,71 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// sample_2.ayar
+// DESCRIPTION : Spam detection — SVM vs LogisticRegression.
+// FEATURES    : 2 model types not in sample_1 (SVM, LogisticRegression),
+//               collect metrics WITHOUT accuracy (only precision/recall/f1),
+//               compare by recall lower_is_better (minimising false negatives),
+//               exclude if overfit only (no underfit condition),
+//               bracket eval_target [exp.best] form,
+//               report with string show value.
+//
+// EXPECTED WINNER : svm_clf (SVM)
+//   SVM formula with C=2: eval_recall = accuracy - 0.02
+//     accuracy = min(0.70 + 2*0.03, 0.94) = 0.76 → recall = 0.74
+//   LR formula with max_iter=200: eval_recall = accuracy - 0.01
+//     accuracy = min(0.72 + 200*0.0002, 0.91) = 0.76 → recall = 0.75
+//   lower_is_better on recall → SVM (0.74) ranks above LR (0.75).
+//   Both pass the overfitting check (gap=0.07, threshold=0.10).
+//   collect does NOT include accuracy — exercises collect restriction.
+// ─────────────────────────────────────────────────────────────────────────────
+
+dataset spam = load("data/spam_emails.csv");
+
+split spam into
+    train(0.65),
+    validation(0.20),
+    test(0.15);
+
+model SVM svm_clf
+{
+    C = 2,
+    kernel = "rbf",
+    probability = true
+}
+
+model LogisticRegression lr_clf
+{
+    max_iter = 200,
+    solver = "lbfgs",
+    verbose = false
+}
+
+experiment spam_exp
+{
+    train svm_clf on spam.train;
+    train lr_clf  on spam.train;
+
+    evaluate svm_clf on spam.validation;
+    evaluate lr_clf  on spam.validation;
+
+    collect metrics [precision, recall, f1];
+
+    analyze overfitting
+    {
+        threshold = 0.10;
+        underfit_max_acc = 0.55;
+    }
+
+    compare by recall lower_is_better;
+
+    exclude if overfit;
+
+    select best;
+}
+
+evaluate [spam_exp.best] on spam.test;
+
+report spam_report
+{
+    metrics = [precision, recall, f1],
+    show    = overfitting_analysis
+}

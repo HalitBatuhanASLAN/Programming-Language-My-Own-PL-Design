@@ -1,0 +1,21 @@
+// sample_errors.ayar
+// ─────────────────────────────────────────────────────────────────
+// PURPOSE : Intentional errors – uncomment ONE block at a time.
+// RUN     : python3 run_tests.py --file sample_errors.ayar
+// ─────────────────────────────────────────────────────────────────
+
+// ── LAYOUT ERROR (active): '{' on same line as header ────────────
+// Expected: LayoutError – '{' must be on its own line
+report final_report {
+    metrics = [accuracy],
+    show = overfitting_analysis
+}
+
+
+// ── GRAMMAR ERROR (comment out the layout error above first) ─────
+// Expected: ParseError – missing ';' after dataset
+// dataset iris = load("iris.csv")
+// model KNN k
+// {
+//     k = 3
+// }

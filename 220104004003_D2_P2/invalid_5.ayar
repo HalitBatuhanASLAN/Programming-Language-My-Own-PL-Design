@@ -1,0 +1,23 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// invalid_5.ayar
+// DELIBERATE ERROR : "pipeline" is not a valid top-level keyword.
+//   Valid top-level keywords: dataset, split, model, experiment, evaluate,
+//   report.
+// EXPECTED ERROR   : ParseError – expected a top-level declaration keyword,
+//                    received IDENTIFIER 'pipeline'
+// ─────────────────────────────────────────────────────────────────────────────
+
+dataset credit = load("data/credit_card.csv");
+
+model LogisticRegression lr_credit
+{
+    C = 1,
+    max_iter = 300,
+    solver = "saga"
+}
+
+pipeline credit_pipeline
+{
+    train lr_credit on credit.train;
+    select best;
+}

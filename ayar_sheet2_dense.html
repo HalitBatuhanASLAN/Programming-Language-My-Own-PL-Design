@@ -1,0 +1,181 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.pg{width:100%;padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:5px;font-family:var(--font-mono);font-size:10.5px;line-height:1.42;color:var(--color-text-primary)}
+.s{border:1px solid var(--color-border-primary);border-radius:3px;padding:5px 6px;background:var(--color-background-primary)}
+.s.full{grid-column:1/-1}
+.sh{font-size:9.5px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--color-border-tertiary);padding-bottom:2px;margin-bottom:4px;color:var(--color-text-secondary)}
+.sb{font-size:10.5px;font-weight:500;margin:4px 0 2px}
+.r{font-family:var(--font-mono);font-size:9.5px;background:var(--color-background-secondary);border-radius:2px;padding:1px 3px}
+.rb{font-family:var(--font-mono);font-size:9px;background:var(--color-background-secondary);border-radius:2px;padding:3px 5px;display:block;margin:2px 0;white-space:pre;line-height:1.5}
+p{margin:1px 0;font-size:10.5px}
+li{margin-left:13px;font-size:10.5px;margin-bottom:1px}
+.sep{border-top:1px dashed var(--color-border-tertiary);margin:3px 0}
+table{width:100%;border-collapse:collapse;font-size:9.5px}
+th{background:var(--color-background-tertiary);padding:2px 4px;font-weight:500;text-align:left;border:1px solid var(--color-border-tertiary)}
+td{padding:2px 4px;border:1px solid var(--color-border-tertiary);vertical-align:top}
+.q{font-size:10px;font-weight:500;margin:3px 0 1px;border-left:2px solid var(--color-border-primary);padding-left:5px}
+.a{font-size:10px;margin:0 0 3px 7px;color:var(--color-text-secondary)}
+.dim{color:var(--color-text-secondary);font-size:9px}
+.hl{font-weight:500}
+</style>
+<div class="pg">
+
+<div class="s full" style="padding:3px 7px">
+<span style="font-weight:500;font-size:11.5px">SHEET 2 / 3 — Lexer · Key EBNF · Separator Table · Operator Precedence · Short-Circuit · Revision Defense · Scope &amp; Lifetime · Parser Architecture</span>
+<span class="dim" style="float:right;margin-top:1px">CSE 341 Ayar · Part 2 Exam</span>
+</div>
+
+<div class="s">
+<div class="sh">Lexer — Token Categories (Sebesta §4.2)</div>
+<table>
+<tr><th>Token</th><th>Pattern</th><th>Critical note</th></tr>
+<tr><td>INT_LITERAL</td><td><span class="r">[0-9]+</span></td><td>NO scientific notation!</td></tr>
+<tr><td>FLOAT_LITERAL</td><td><span class="r">[0-9]+\.[0-9]*</span></td><td>1e-9 → 4 tokens, NOT float</td></tr>
+<tr><td>STRING_LIT</td><td><span class="r">"[^"\n]*"</span></td><td></td></tr>
+<tr><td>BOOL_LITERAL</td><td><span class="r">true|false</span></td><td>dedicated type, NOT keyword</td></tr>
+<tr><td><b>METRIC_LITERAL</b></td><td><span class="r">accuracy|precision|recall|f1</span></td><td><b>dedicated type, NOT identifier!</b></td></tr>
+<tr><td>KEYWORD</td><td>dataset, model, train…</td><td>post-scan frozenset classification</td></tr>
+<tr><td><b>IDENTIFIER</b></td><td><span class="r">[A-Za-z][A-Za-z0-9_]*</span></td><td><b>NO underscore start — AI wrote [A-Za-z_], you fixed it</b></td></tr>
+<tr><td>OPERATOR</td><td><span class="r">* - + / &lt; &gt; == != &lt;= &gt;=</span></td><td>2-char ops before 1-char in regex</td></tr>
+<tr><td>SEPARATOR</td><td><span class="r">{} ; : , ()</span></td><td></td></tr>
+</table>
+<p style="margin-top:3px"><b>1e-9 lexes as:</b> INT_LITERAL(1) IDENTIFIER(e) OP_MINUS(-) INT_LITERAL(9) → ParseError at IDENTIFIER 'e' (expected , or }). Root cause: float_literal grammar has no exponent rule.</p>
+<p><b>Maximal munch:</b> == never tokenizes as two separate =. 2-char ops ordered before 1-char in TOKEN_SPEC regex.</p>
+<p><b>Architecture:</b> single compiled master regex (TOKEN_SPEC). WORD matches all identifier-shaped strings first → post-classification step assigns KEYWORD / METRIC_LIT / BOOL_LIT / IDENTIFIER via frozenset lookup. Token dataclass: type, value, line, column. Custom LexicalError with exact location.</p>
+
+<div class="sep"></div>
+<div class="sh">Key EBNF Productions — the ones that cause exam questions</div>
+<span class="rb">&lt;field_value&gt;       ::= &lt;int_lit&gt; | &lt;float_lit&gt; | &lt;str_lit&gt; | &lt;bool_lit&gt;
+  METRIC_LITERAL forbidden → R3 only triggerable via synthetic AST
+
+&lt;analyze_field_list&gt;::= &lt;analyze_field&gt; { &lt;analyze_field&gt; }  ← NO comma!
+&lt;analyze_field&gt;    ::= "threshold" "=" &lt;float_lit&gt; ";"
+                      | "underfit_max_acc" "=" &lt;float_lit&gt; ";"
+
+&lt;field_list&gt;       ::= &lt;field&gt; { "," &lt;field&gt; }  ← comma for model block
+
+&lt;split_part&gt;       ::= &lt;split_role&gt; "(" &lt;float_literal&gt; ")"  ← INT rejected!
+&lt;dataset_ref&gt;      ::= &lt;identifier&gt; "." &lt;split_role&gt;
+&lt;eval_target&gt;      ::= &lt;id&gt; | &lt;id&gt;"."&lt;id&gt; | "["&lt;id&gt;"."&lt;id&gt;"]"
+&lt;metric_literal&gt;   ::= "accuracy"|"precision"|"recall"|"f1"
+&lt;model_type&gt;       ::= "KNN"|"DecisionTree"|"SVM"|"NaiveBayes"|"LogisticRegression"
+&lt;exclude_condition&gt;::= &lt;exclude_term&gt; { "or" &lt;exclude_term&gt; }
+&lt;exclude_term&gt;     ::= "overfit" | "underfit"</span>
+<p>exclude_condition has its OWN closed sub-grammar — NOT routed through &lt;expr&gt;. Reason: or keyword collision with expression grammar. exclude if accuracy &gt; 0.5 would be accepted if &lt;expr&gt; used here — DSL must reject that.</p>
+
+<div class="sep"></div>
+<div class="sh">Separator Table — THE Most Common Exam Trap</div>
+<table>
+<tr><th>Context</th><th>Separator</th></tr>
+<tr><td>model fields between</td><td><b>comma ,</b></td></tr>
+<tr><td>report fields between</td><td><b>comma ,</b></td></tr>
+<tr><td>split parts between</td><td><b>comma ,</b></td></tr>
+<tr><td>metric list inside [...]</td><td><b>comma ,</b></td></tr>
+<tr><td><b>analyze fields between</b></td><td><b>NOTHING — no separator</b></td></tr>
+<tr><td>analyze each field end</td><td><b>semicolon ;</b></td></tr>
+<tr><td>every statement end</td><td><b>semicolon ;</b></td></tr>
+</table>
+<p style="margin-top:2px">TRAP: analyze block looks like model block but uses ; terminator with NO inter-field separator. Writing <span class="r">threshold = 0.10,</span> → ParseError.</p>
+
+<div class="sep"></div>
+<div class="sh">Operator Precedence (§7.3 — stratified nonterminals)</div>
+<table>
+<tr><th>Level</th><th>Op</th><th>Assoc</th><th>Nonterminal</th></tr>
+<tr><td>1 lowest</td><td>or</td><td>left</td><td>&lt;expr&gt;</td></tr>
+<tr><td>2</td><td>and</td><td>left</td><td>&lt;and_expr&gt;</td></tr>
+<tr><td>3</td><td>not</td><td><b>right-recursive</b></td><td>&lt;not_expr&gt;</td></tr>
+<tr><td>4</td><td>== != &lt; &lt;= &gt; &gt;=</td><td>left, non-chain</td><td>&lt;rel_expr&gt;</td></tr>
+<tr><td>5</td><td>+ −</td><td>left</td><td>&lt;add_expr&gt;</td></tr>
+<tr><td>6</td><td>* /</td><td>left</td><td>&lt;mul_expr&gt;</td></tr>
+<tr><td>7 highest</td><td>unary −</td><td><b>right-recursive</b></td><td>&lt;unary_expr&gt;</td></tr>
+</table>
+<p style="margin-top:2px"><b>not and unary− are RIGHT-RECURSIVE, NOT right-associative.</b> Associativity is a binary operator concept (§7.3). not not x parses as not(not x) via recursion, not associativity. AI generated "right-associative" — you corrected to "right-recursive".</p>
+<p><b>Relational ops are NON-CHAINING:</b> a &lt; b &lt; c is a ParseError, not double comparison — prevents Python-style silent logical errors.</p>
+<p><b>Left-assoc via while-loop:</b> <span class="r">left = BinOp(op, left, right)</span> in loop. Recursion → right-assoc + infinite loop risk for top-down parser.</p>
+</div>
+
+<div class="s">
+<div class="sh">Revision Defense — analyze block semicolons vs commas (§1.3.1 vs §1.3.2)</div>
+<p><b>CHANGE:</b> Part 1 used comma-separated fields → Part 2: semicolon-terminated, no inter-field separator.</p>
+<span class="rb">FINAL GRAMMAR:
+&lt;analyze_field_list&gt; ::= &lt;analyze_field&gt; { &lt;analyze_field&gt; }
+&lt;analyze_field&gt;      ::= "threshold" "=" &lt;float_lit&gt; ";"
+                       | "underfit_max_acc" "=" &lt;float_lit&gt; ";"
+
+PARSER LOOP:
+while current.type=='KEYWORD' and
+      current.value in ('threshold','underfit_max_acc'):
+    parse_field()   # consumes field keyword, =, float_lit, ;</span>
+<p><b>Why NOT {field ','}?</b> Comma doesn't exist between fields — loop consuming it raises ParseError. Lookahead on field keyword is the only reliable termination condition.</p>
+<p><b>DEFENSE (§1.3.1 readability):</b> Self-delimiting — reader scanning block sees complete terminated unit on each line without tracking whether comma follows. Consistent with verbose keyword style (higher_is_better, overfitting_analysis, etc.).</p>
+<p><b>COUNTER (§1.3.2 writability / D5 retrospective):</b> analyze block is the ONLY construct in Ayar using semicolon terminators. Model blocks, report blocks, metric lists all use commas. Inconsistency imposes writability cost — programmer must remember different convention for ONE block type. Multiple correction rounds during development materialized this cost.</p>
+<p><b>VERDICT (D5):</b> Retrospective wins. Marginal readability gain from semicolons, concrete recurring writability cost. Would use uniform commas if starting over.</p>
+
+<div class="sep"></div>
+<div class="sh">Scope &amp; Lifetime (Sebesta §5.7, §5.8)</div>
+<p><b>STATIC (lexical) scoping — exactly 2 levels.</b></p>
+<table>
+<tr><th>What</th><th>Scope</th><th>Lifetime</th><th>§</th></tr>
+<tr><td>dataset, model</td><td>Global</td><td>Static — whole program</td><td>§5.8.1</td></tr>
+<tr><td>Exp-internal M</td><td>Experiment</td><td>Stack-dynamic — entry→exit</td><td>§5.8.2</td></tr>
+<tr><td>exp_name.best after export</td><td>Global Γ</td><td>Static — persists until program ends</td><td>§5.8.1</td></tr>
+<tr><td>Heap-dynamic</td><td>—</td><td>NOT IN AYAR</td><td>—</td></tr>
+</table>
+<p style="margin-top:2px">Lookup: Experiment scope first → not found → Global scope. Model declared at top-level visible to every experiment block.</p>
+<p><b>Why not dynamic?</b> Dynamic: train m inside experiment B could accidentally resolve to experiment A's m if scopes not isolated → nondeterministic training results → ML reproducibility destroyed. Static: reading source code tells you exactly which model is used — no runtime call history needed.</p>
+<p><b>What breaks if switched?</b> Two experiment blocks both declaring local model m → second experiment's train m picks up first experiment's m → silently different hyperparameters used → unreproducible results, catastrophic in ML.</p>
+
+<div class="sep"></div>
+<div class="sh">Binding Times (Sebesta §5.4)</div>
+<table>
+<tr><th>What</th><th>When bound</th></tr>
+<tr><td>Operator types (+,-,*,/)</td><td>Language design time — fixed in grammar</td></tr>
+<tr><td>Valid model type set (KNN, DT…)</td><td>Language design time — closed keyword set, user cannot add XGBoost</td></tr>
+<tr><td>model name ↔ hyperparams</td><td>Runtime (elaboration) — when declaration encountered during interpretation</td></tr>
+<tr><td>dataset name ↔ file path</td><td>Runtime (elaboration)</td></tr>
+</table>
+
+<div class="sep"></div>
+<div class="sh">Parser Architecture (Sebesta §4.4)</div>
+<li>Recursive-descent, LL(1): one _parse_* method per EBNF non-terminal</li>
+<li>_consume(expected_type): gate method → ParseError with expected/actual/line/col</li>
+<li>Left-assoc via while-loop (NOT recursion)</li>
+<li>validate_layout() pre-parse pass: { and } on own lines → LayoutError (NOT ParseError — EBNF cannot express line-position constraints)</li>
+<li>AI parser bugs: 8 token name mismatches (ASSIGN→OP_ASSIGN, INT_LIT→INT_LITERAL), split ratio INT→FLOAT, analyze comma→none, missing dotted eval_target third alternative</li>
+
+<div class="sep"></div>
+<div class="sh">Design Decisions Q&amp;A (Sebesta-rooted)</div>
+
+<div class="q">Q: Why does Ayar use closed keyword set for model types instead of open identifiers?</div>
+<div class="a">A: Deliberate DSL design decision — validates model types at SYNTAX level, not semantic level. Parser immediately rejects "RandomForest" with a helpful message listing valid types. AI recommended D1 to make them open identifiers (E1 experiment) — rejected because DSL's identity relies on constraining the type space. Trade-off: user cannot add new model types without grammar change. Intentional — language defines the support set.</div>
+
+<div class="q">Q: Why is layout rule (brace on own line) a pre-parse pass, not EBNF?</div>
+<div class="a">A: EBNF describes token sequences — it cannot express constraints about line positions. { is a valid SEPARATOR token regardless of which line it's on. The layout validation pass (validate_layout) inspects line number attributes of tokens — information only available post-tokenization. Raises LayoutError, not ParseError, to distinguish the two error sources.</div>
+
+<div class="q">Q: Ayar prioritizes readability (§1.3.1) — give 3 concrete grammar choices that reflect this.</div>
+<div class="a">A: (1) { must be on its own line — forces visual block structure. (2) Verbose keywords: higher_is_better, lower_is_better, overfitting_analysis — ML researcher reads intent immediately. (3) Separate keywords for each pipeline step: train, evaluate, collect, analyze, compare, exclude, select — each statement type named explicitly, no abbreviations. Trade-off: all three increase writability cost (§1.3.2).</div>
+
+<div class="q">Q: Why is the expression sub-language (add_expr, mul_expr etc.) defined but never semantically grounded in §4.4?</div>
+<div class="a">A: Scope decision consistent with handout (only 2 constructs formalized). Expression sub-language has no evaluation rules. This left R3 as dead code — grammar prevents metric literals in arithmetic positions, so R3 can only be triggered via synthetic AST. D5 retrospective identifies this as a visible gap: expression sub-language would need its own evaluation semantics and proper type judgement system in a real implementation.</div>
+
+<div class="q">Q: Why not short-circuit evaluation for or/and? (§7.6)</div>
+<div class="a">A: Ayar expressions have NO side effects — short-circuit only helps when evaluating second operand has a side effect to skip. In exclude if overfit or underfit, both tags are pre-computed Booleans already available before the exclude statement runs. Full evaluation: behavior completely predictable regardless of operand order → supports reliability (§1.3.3). Future extension trade-off: if conditions become computationally expensive, full eval wastes work.</div>
+
+<div class="q">Q: Relational operators are non-chaining — why? (§7.3)</div>
+<div class="a">A: a &lt; b &lt; c looks like a double comparison in math but Python evaluates it as (a &lt; b) and (b &lt; c) — a semantic that surprises C/Java programmers. Ayar makes a &lt; b &lt; c a ParseError at the second relational operator in &lt;rel_expr&gt; — no silent misinterpretation possible. Reliability (§1.3.3) over writability.</div>
+
+<div class="q">Q: Model types as closed keyword set — what would happen if user wrote model XGBoost m?</div>
+<div class="a">A: Lexer tokenizes XGBoost as IDENTIFIER. Parser expects &lt;model_type&gt; (one of the 5 keywords) after "model" keyword — sees IDENTIFIER instead → ParseError: "Expected model type (KNN, DecisionTree, SVM, NaiveBayes, LogisticRegression), received IDENTIFIER 'XGBoost'". Language design time binding: model type set is fixed in grammar, not user-extensible.</div>
+
+<div class="q">Q: Why does eval_target have 3 forms (plain, dotted, bracket)?</div>
+<div class="a">A: Plain: evaluate some_model on d.test (pre-selected model). Dotted (iris_exp.best): preferred form, reads naturally as "the best from iris_exp". Bracket ([iris_exp.best]): alternative syntactic sugar. AI's initial parser only had plain and bracket — dotted form was missing. Caught by tracing D1 sample program through grammar by hand. Parser must try dotted form FIRST — otherwise iris_exp matches plain id and .best becomes stray token → ParseError.</div>
+
+<div class="q">Q: Why does Ayar have no heap-dynamic variables?</div>
+<div class="a">A: Ayar is a high-level DSL for ML configuration — abstracts away low-level memory concerns. No manual allocation/deallocation needed. This is consistent with reliability priority (§1.3.3) — heap management introduces entire classes of bugs (leaks, dangling pointers) irrelevant to the domain. Stack-dynamic (experiment scope) and static (global) cover all needed lifetimes.</div>
+
+<div class="q">Q: From Part 1 — Why did you keep model types as closed keywords instead of open identifiers (AI recommendation D1)?</div>
+<div class="a">A: AI's E1 experiment recommended making model types open identifiers — rejected because parser validates model types at syntax level, which is the DSL's identity argument. A language where model KNN and model MyCustomNet are syntactically equivalent is not a DSL but a generic scripting language. Closing the set to 5 types is a deliberate constraint that can be defended at the exam: Sebesta §3.3 — closed keyword sets make grammars unambiguous and error messages more helpful.</div>
+
+</div>
+</div>
